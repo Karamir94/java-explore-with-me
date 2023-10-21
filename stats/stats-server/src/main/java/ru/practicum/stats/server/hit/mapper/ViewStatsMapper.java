@@ -1,15 +1,11 @@
 package ru.practicum.stats.server.hit.mapper;
 
+import org.mapstruct.Mapper;
 import ru.practicum.stats.dto.ViewStatsDto;
 import ru.practicum.stats.server.hit.model.ViewStats;
 
-public class ViewStatsMapper {
+@Mapper(componentModel = "spring")
+public interface ViewStatsMapper {
 
-    public static ViewStatsDto toViewStatsDto(ViewStats viewStats) {
-        return ViewStatsDto.builder()
-                .hits(viewStats.getHits())
-                .uri(viewStats.getUri())
-                .app(viewStats.getApp())
-                .build();
-    }
+    ViewStatsDto toDto(ViewStats viewStats);
 }

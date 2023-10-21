@@ -1,18 +1,18 @@
 package ru.practicum.stats.client;
 
-import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.util.DefaultUriBuilderFactory;
-import ru.practicum.stats.dto.EndpointHitDto;
+import ru.practicum.stats.dto.HitDto;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -32,8 +32,8 @@ public class StatsClient extends BaseClient {
     }
 
     @PostMapping()
-    public ResponseEntity<Object> createEndpointHit(@RequestBody EndpointHitDto endpointHitDto) {
-        return post("/hit", endpointHitDto);
+    public ResponseEntity<Object> createEndpointHit(@RequestBody HitDto hitDto) {
+        return post("/hit", hitDto);
     }
 
     @GetMapping()
