@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 
 import static com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING;
@@ -17,18 +18,19 @@ import static com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING;
 @AllArgsConstructor
 public class HitDto {
 
-    Long id;
+    private Long id;
 
     @NotBlank
-    String ip;
+    private String ip;
 
     @NotBlank
-    String app;
+    private String app;
 
     @NotBlank
-    String uri;
+    private String uri;
 
+    @NotNull
     @JsonFormat(shape = STRING, pattern = "yyyy-MM-dd HH:mm:ss")
-    LocalDateTime timestamp;
+    private LocalDateTime timestamp;
 }
 
