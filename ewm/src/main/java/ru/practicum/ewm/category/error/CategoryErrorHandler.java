@@ -9,7 +9,7 @@ import ru.practicum.ewm.category.exception.CategoryNotExistException;
 import ru.practicum.ewm.error.entity.Error;
 import ru.practicum.ewm.utils.Patterns;
 
-import static java.time.LocalTime.now;
+import static java.time.LocalDateTime.now;
 import static java.time.format.DateTimeFormatter.ofPattern;
 import static org.springframework.http.HttpStatus.CONFLICT;
 import static org.springframework.http.HttpStatus.NOT_FOUND;

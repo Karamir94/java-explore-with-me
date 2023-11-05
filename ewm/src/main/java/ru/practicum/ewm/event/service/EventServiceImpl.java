@@ -1,19 +1,20 @@
 package ru.practicum.ewm.event.service;
 
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import ru.practicum.ewm.category.exception.CategoryNotExistException;
 import ru.practicum.ewm.category.repository.CategoryRepository;
+//import ru.practicum.ewm.config.MyConfig;
 import ru.practicum.ewm.event.dto.*;
 import ru.practicum.ewm.event.entity.Event;
 import ru.practicum.ewm.event.enums.EventState;
 import ru.practicum.ewm.event.enums.SortValue;
-import ru.practicum.ewm.event.exception.EventCanceledException;
-import ru.practicum.ewm.event.exception.EventNotExistException;
-import ru.practicum.ewm.event.exception.EventPublishedException;
-import ru.practicum.ewm.event.exception.EventWrongTimeException;
+import ru.practicum.ewm.event.exception.*;
 import ru.practicum.ewm.event.mapper.EventMapper;
 import ru.practicum.ewm.event.repository.EventRepository;
 import ru.practicum.ewm.user.exception.UserNotExistException;
@@ -26,17 +27,17 @@ import ru.practicum.stats.dto.ViewStatsDto;
 import javax.persistence.EntityManager;
 import javax.persistence.criteria.Predicate;
 import javax.servlet.http.HttpServletRequest;
-
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.springframework.data.domain.PageRequest.*;
-import static java.time.LocalDateTime.parse;
 import static java.time.LocalDateTime.now;
+import static java.time.LocalDateTime.parse;
 import static java.time.format.DateTimeFormatter.ofPattern;
 import static java.util.Comparator.comparing;
 import static java.util.stream.Collectors.toList;
+import static org.springframework.data.domain.PageRequest.of;
 import static ru.practicum.ewm.event.enums.EventState.*;
 import static ru.practicum.ewm.event.enums.SortValue.EVENT_DATE;
 import static ru.practicum.ewm.event.enums.StateActionForAdmin.PUBLISH_EVENT;
@@ -45,16 +46,21 @@ import static ru.practicum.ewm.event.enums.StateActionForUser.SEND_TO_REVIEW;
 
 @Slf4j
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class EventServiceImpl implements EventService {
 
+    ApplicationContext context =
+            new AnnotationConfigApplicationContext("ru.practicum.stats.client");
+//    ApplicationContext context =
+//        new AnnotationConfigApplicationContext(MyConfig.class);
     private final CategoryRepository categoryRepository;
     private final EventRepository eventRepository;
     private final UserRepository userRepository;
     private final EntityManager entityManager;
     private final EventMapper eventMapper;
-    private final StatsClient statsClient;
+    private final StatsClient statsClient = context.getBean(StatsClient.class);
+//    private final StatsClient statsClient;
 
     @Override
     @Transactional
@@ -74,6 +80,7 @@ public class EventServiceImpl implements EventService {
                 () -> new UserNotExistException("User#" + userId + " does not exist"));
 
         event.setInitiator(user);
+//        event.setPublishedOn(LocalDateTime.now());
 
         return eventMapper.toLongEventDto(eventRepository.save(event));
     }
@@ -130,8 +137,8 @@ public class EventServiceImpl implements EventService {
         }
         if (updateEventAdminDto.getEventDate() != null) {
             var eventTime = updateEventAdminDto.getEventDate();
-            if (eventTime.isBefore(now())
-                    || eventTime.isBefore(event.getPublishedOn().plusHours(1)))
+            if (eventTime.isBefore(now()) || event.getPublishedOn() != null
+                    && eventTime.isBefore(event.getPublishedOn().plusHours(1)))
                 throw new EventWrongTimeException("Wrong time");
 
             event.setEventDate(updateEventAdminDto.getEventDate());
@@ -302,6 +309,13 @@ public class EventServiceImpl implements EventService {
         }
 
         if (rangeEnd != null)
+            if (rangeStart != null) {
+                LocalDateTime startTime = LocalDateTime.parse(rangeStart, DateTimeFormatter.ofPattern(Patterns.DATE_PATTERN));
+                LocalDateTime finishTime = LocalDateTime.parse(rangeEnd, DateTimeFormatter.ofPattern(Patterns.DATE_PATTERN));
+                if (startTime.isAfter(finishTime)) {
+                    throw new BadParamException("rangeEnd before than startTime");
+                }
+            }
             criteria = builder.and(criteria, builder.lessThanOrEqualTo(root.get("eventDate").as(LocalDateTime.class),
                     end));
 
@@ -352,7 +366,7 @@ public class EventServiceImpl implements EventService {
         if (stats.size() == 1)
             event.setViews(stats.get(0).getHits());
         else
-            event.setViews(0L);
+            event.setViews(1L);
     }
 
     private void sendStats(Event event,

@@ -14,7 +14,6 @@ import ru.practicum.ewm.request.dto.RequestUpdateResult;
 import ru.practicum.ewm.request.service.RequestService;
 
 import javax.validation.Valid;
-
 import java.util.List;
 
 import static org.springframework.http.HttpStatus.CREATED;

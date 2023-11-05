@@ -1,7 +1,8 @@
 package ru.practicum.stats.client;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
+import org.springframework.context.annotation.PropertySource;
+import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import ru.practicum.stats.dto.HitDto;
@@ -14,7 +15,8 @@ import static org.springframework.http.HttpStatus.CREATED;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import static org.springframework.http.ResponseEntity.status;
 
-@Service
+@Component
+@PropertySource("classpath:application.properties")
 public class StatsClient {
 
     private final WebClient webClient;

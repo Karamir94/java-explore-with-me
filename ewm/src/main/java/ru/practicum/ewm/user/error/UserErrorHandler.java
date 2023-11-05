@@ -10,7 +10,7 @@ import ru.practicum.ewm.user.exception.UserNotExistException;
 import ru.practicum.ewm.user.exception.WrongUserException;
 import ru.practicum.ewm.utils.Patterns;
 
-import static java.time.LocalTime.now;
+import static java.time.LocalDateTime.now;
 import static java.time.format.DateTimeFormatter.ofPattern;
 import static org.springframework.http.HttpStatus.CONFLICT;
 import static org.springframework.http.HttpStatus.NOT_FOUND;

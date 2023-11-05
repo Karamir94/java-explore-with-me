@@ -6,7 +6,6 @@ import ru.practicum.ewm.event.entity.Location;
 import ru.practicum.ewm.event.enums.StateActionForUser;
 
 import javax.validation.constraints.Size;
-
 import java.time.LocalDateTime;
 
 import static com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING;
@@ -20,7 +19,7 @@ import static ru.practicum.ewm.utils.Patterns.DATE_PATTERN;
 @AllArgsConstructor
 public class UpdateEventUserDto {
 
-    @Size(min = 3, max = 2000)
+    @Size(min = 20, max = 2000)
     private String annotation;
 
     private Long category;

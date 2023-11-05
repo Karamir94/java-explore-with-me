@@ -18,6 +18,7 @@ import static ru.practicum.ewm.utils.Patterns.DATE_PATTERN;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ShortEventDto {
+
     private Long id;
 
     @JsonFormat(shape = STRING, pattern = DATE_PATTERN)

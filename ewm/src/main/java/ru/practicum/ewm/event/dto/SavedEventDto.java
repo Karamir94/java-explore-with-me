@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.*;
 import ru.practicum.ewm.event.entity.Location;
 
+import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
 import java.time.LocalDateTime;
@@ -19,8 +20,8 @@ import static ru.practicum.ewm.utils.Patterns.DATE_PATTERN;
 @AllArgsConstructor
 public class SavedEventDto {
 
-    @NotNull
-    @Size(min = 3, max = 2000)
+    @NotBlank
+    @Size(min = 20, max = 2000)
     private String annotation;
 
     @NotNull

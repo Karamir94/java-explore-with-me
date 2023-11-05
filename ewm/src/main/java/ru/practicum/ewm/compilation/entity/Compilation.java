@@ -5,7 +5,6 @@ import org.hibernate.Hibernate;
 import ru.practicum.ewm.event.entity.Event;
 
 import javax.persistence.*;
-
 import java.util.Objects;
 import java.util.Set;
 

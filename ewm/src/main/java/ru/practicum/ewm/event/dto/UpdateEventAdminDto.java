@@ -19,7 +19,7 @@ import static ru.practicum.ewm.utils.Patterns.DATE_PATTERN;
 @AllArgsConstructor
 public class UpdateEventAdminDto {
 
-    @Size(min = 3, max = 2000)
+    @Size(min = 20, max = 2000)
     private String annotation;
 
     private Long category;

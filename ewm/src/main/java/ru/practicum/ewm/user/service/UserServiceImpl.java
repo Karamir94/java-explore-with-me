@@ -11,7 +11,7 @@ import ru.practicum.ewm.user.repository.UserRepository;
 
 import java.util.List;
 
-import static org.springframework.data.domain.PageRequest.*;
+import static org.springframework.data.domain.PageRequest.of;
 
 @Slf4j
 @Service

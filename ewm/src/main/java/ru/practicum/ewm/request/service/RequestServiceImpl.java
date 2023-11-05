@@ -1,6 +1,5 @@
 package ru.practicum.ewm.request.service;
 
-import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -83,7 +82,8 @@ public class RequestServiceImpl implements RequestService {
                 .created(now())
                 .event(eventId)
                 .requester(userId)
-                .status(RequestStatus.PENDING)
+//                .status(RequestStatus.PENDING)
+                .status(RequestStatus.CONFIRMED)
                 .build();
 
         return requestMapper.toRequestDto(requestRepository.save(request));

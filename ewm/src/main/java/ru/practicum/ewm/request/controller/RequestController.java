@@ -1,6 +1,5 @@
 package ru.practicum.ewm.request.controller;
 
-import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.ewm.request.dto.RequestDto;

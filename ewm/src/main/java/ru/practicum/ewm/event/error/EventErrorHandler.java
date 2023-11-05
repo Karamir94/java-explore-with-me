@@ -4,14 +4,13 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import ru.practicum.ewm.event.exception.*;
 import ru.practicum.ewm.error.entity.Error;
+import ru.practicum.ewm.event.exception.*;
 import ru.practicum.ewm.utils.Patterns;
 
-import static java.time.LocalTime.now;
+import static java.time.LocalDateTime.now;
 import static java.time.format.DateTimeFormatter.ofPattern;
-import static org.springframework.http.HttpStatus.CONFLICT;
-import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static org.springframework.http.HttpStatus.*;
 
 @RestControllerAdvice
 public class EventErrorHandler {
@@ -42,7 +41,7 @@ public class EventErrorHandler {
 
     @ResponseBody
     @ExceptionHandler
-    @ResponseStatus(CONFLICT)
+    @ResponseStatus(BAD_REQUEST)
     public Error handleEventCanceledException(final EventCanceledException exception) {
         return Error.builder()
                 .status(CONFLICT.getReasonPhrase().toUpperCase())
@@ -54,7 +53,7 @@ public class EventErrorHandler {
 
     @ResponseBody
     @ExceptionHandler
-    @ResponseStatus(CONFLICT)
+    @ResponseStatus(BAD_REQUEST)
     public Error handleEventWrongTimeException(final EventWrongTimeException exception) {
         return Error.builder()
                 .status(CONFLICT.getReasonPhrase().toUpperCase())
@@ -71,6 +70,18 @@ public class EventErrorHandler {
         return Error.builder()
                 .status(NOT_FOUND.getReasonPhrase().toUpperCase())
                 .reason(("This event does not exist"))
+                .message(exception.getMessage())
+                .timestamp(now().format(ofPattern(Patterns.DATE_PATTERN)))
+                .build();
+    }
+
+    @ResponseBody
+    @ExceptionHandler
+    @ResponseStatus(BAD_REQUEST)
+    public Error handleEventWrongBadParamException(final BadParamException exception) {
+        return Error.builder()
+                .status(CONFLICT.getReasonPhrase().toUpperCase())
+                .reason("Wrong event time")
                 .message(exception.getMessage())
                 .timestamp(now().format(ofPattern(Patterns.DATE_PATTERN)))
                 .build();

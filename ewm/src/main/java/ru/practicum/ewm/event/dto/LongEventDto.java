@@ -6,8 +6,8 @@ import ru.practicum.ewm.category.dto.CategoryDto;
 import ru.practicum.ewm.event.entity.Location;
 import ru.practicum.ewm.event.enums.EventState;
 
+import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Size;
-
 import java.time.LocalDateTime;
 
 import static com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING;
@@ -22,7 +22,8 @@ import static ru.practicum.ewm.utils.Patterns.DATE_PATTERN;
 public class LongEventDto {
     private Long id;
 
-    @Size(max = 2000)
+    @NotBlank
+    @Size(min = 20, max = 2000)
     private String annotation;
 
     private CategoryDto category;

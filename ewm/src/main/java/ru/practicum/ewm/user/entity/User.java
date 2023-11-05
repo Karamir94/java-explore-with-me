@@ -4,7 +4,6 @@ import lombok.*;
 import org.hibernate.Hibernate;
 
 import javax.persistence.*;
-
 import java.util.Objects;
 
 import static javax.persistence.GenerationType.IDENTITY;
