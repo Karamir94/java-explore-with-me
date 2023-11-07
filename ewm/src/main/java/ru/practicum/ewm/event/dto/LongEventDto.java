@@ -52,6 +52,7 @@ public class LongEventDto {
 
     private Boolean requestModeration;
 
+    @Size (max = 30)
     private EventState state;
 
     @Size(max = 120)

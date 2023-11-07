@@ -36,7 +36,7 @@ public class UserServiceImpl implements UserService {
     public List<UserDto> getUsers(List<Long> ids,
                                   Integer from,
                                   Integer size) {
-        return ids.isEmpty()
+        return (ids == null || ids.isEmpty())
                 ? userMapper.toUserDtos(userRepository.findAll(of(from / size, size)).toList())
                 : userMapper.toUserDtos(userRepository.findAllById(ids));
     }

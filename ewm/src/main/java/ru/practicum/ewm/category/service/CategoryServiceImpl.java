@@ -42,6 +42,9 @@ public class CategoryServiceImpl implements CategoryService {
     public CategoryDto updateCategory(Long id, CategoryDto categoryDto) {
         var category = categoryRepository.findById(id).orElseThrow(
                 () -> new CategoryNotExistException("Category#" + id + " does not exist"));
+        if (category.getName().equals(categoryDto.getName())) {
+            return categoryMapper.toCategoryDto(category);
+        }
         if (categoryRepository.existsByName(categoryDto.getName()))
             throw new NameExistException("Category with name " + categoryDto.getName() + " cannot be updated");
         category.setName(categoryDto.getName());

@@ -35,7 +35,7 @@ public class CompilationServiceImpl implements CompilationService {
         var events = eventRepository.findAllByIdIn(savedCompilationDto.getEvents());
 
         var compilation = Compilation.builder()
-                .pinned(savedCompilationDto.getPinned())
+                .pinned(savedCompilationDto.getPinned() == null ? false : savedCompilationDto.getPinned())
                 .title(savedCompilationDto.getTitle())
                 .events(new HashSet<>(events))
                 .build();

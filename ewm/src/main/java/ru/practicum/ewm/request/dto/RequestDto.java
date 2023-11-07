@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.*;
 import ru.practicum.ewm.utils.Patterns;
 
+import javax.validation.constraints.Size;
 import java.time.LocalDateTime;
 
 import static com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING;
@@ -22,6 +23,7 @@ public class RequestDto {
     private LocalDateTime created;
 
     private Long requester;
+    @Size(max = 250)
     private String status;
     private Long event;
 }

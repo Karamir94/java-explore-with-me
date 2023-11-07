@@ -24,7 +24,7 @@ public class UserErrorHandler {
     public Error handleNameExistException(final NameExistException exception) {
         return Error.builder()
                 .status(CONFLICT.getReasonPhrase().toUpperCase())
-                .reason("This username is already exist")
+                .reason("This name is already exist")
                 .message(exception.getMessage())
                 .timestamp(now().format(ofPattern(Patterns.DATE_PATTERN)))
                 .build();

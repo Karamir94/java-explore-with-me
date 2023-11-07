@@ -41,7 +41,7 @@ public class EventErrorHandler {
 
     @ResponseBody
     @ExceptionHandler
-    @ResponseStatus(BAD_REQUEST)
+    @ResponseStatus(CONFLICT)
     public Error handleEventCanceledException(final EventCanceledException exception) {
         return Error.builder()
                 .status(CONFLICT.getReasonPhrase().toUpperCase())
