@@ -1,6 +1,6 @@
 package ru.practicum.ewm.category.controller;
 
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.ewm.category.dto.CategoryDto;
 import ru.practicum.ewm.category.service.CategoryService;
@@ -8,7 +8,7 @@ import ru.practicum.ewm.category.service.CategoryService;
 import java.util.List;
 
 @RestController
-@AllArgsConstructor
+@RequiredArgsConstructor
 @RequestMapping("/categories")
 public class CategoryController {
 

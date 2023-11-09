@@ -1,6 +1,6 @@
 package ru.practicum.ewm.compilation.controller;
 
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.ewm.compilation.dto.CompilationDto;
@@ -15,7 +15,7 @@ import static org.springframework.http.HttpStatus.NO_CONTENT;
 
 @Validated
 @RestController
-@AllArgsConstructor
+@RequiredArgsConstructor
 @RequestMapping("/admin")
 public class CompilationAdminController {
 

@@ -24,7 +24,7 @@ public class Compilation {
     @GeneratedValue(strategy = IDENTITY)
     private Long id;
 
-    @Column(name = "title", length = 140)
+    @Column(name = "title", length = 50)
     private String title;
 
     @Column(name = "pinned")

@@ -71,10 +71,10 @@ public class Event {
     private Boolean requestModeration;
 
     @Enumerated(STRING)
-    @Column(name = "state")
+    @Column(name = "state", length = 30)
     private EventState state;
 
-    @Column(name = "title")
+    @Column(name = "title", length = 120)
     private String title;
 
     @Column(name = "views")

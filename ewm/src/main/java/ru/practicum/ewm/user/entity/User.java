@@ -22,10 +22,10 @@ public class User {
     @GeneratedValue(strategy = IDENTITY)
     private Long id;
 
-    @Column(name = "name", length = 140)
+    @Column(name = "name", length = 250)
     private String name;
 
-    @Column(name = "email", length = 140, unique = true)
+    @Column(name = "email", length = 254, unique = true)
     private String email;
 
     @Override

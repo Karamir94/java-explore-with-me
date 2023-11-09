@@ -1,6 +1,6 @@
 package ru.practicum.ewm.compilation.service;
 
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,6 +11,7 @@ import ru.practicum.ewm.compilation.entity.Compilation;
 import ru.practicum.ewm.compilation.exception.CompilationNotExistException;
 import ru.practicum.ewm.compilation.mapper.CompilationMapper;
 import ru.practicum.ewm.compilation.repository.CompilationRepository;
+import ru.practicum.ewm.event.entity.Event;
 import ru.practicum.ewm.event.repository.EventRepository;
 
 import javax.persistence.EntityManager;
@@ -20,7 +21,7 @@ import java.util.List;
 
 @Slf4j
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class CompilationServiceImpl implements CompilationService {
 
@@ -32,7 +33,12 @@ public class CompilationServiceImpl implements CompilationService {
     @Override
     @Transactional
     public CompilationDto saveCompilation(SavedCompilationDto savedCompilationDto) {
-        var events = eventRepository.findAllByIdIn(savedCompilationDto.getEvents());
+        List<Event> events;
+        if (savedCompilationDto.getEvents() != null) {
+            events = eventRepository.findAllByIdIn(savedCompilationDto.getEvents());
+        } else {
+            events = List.of();
+        }
 
         var compilation = Compilation.builder()
                 .pinned(savedCompilationDto.getPinned() == null ? false : savedCompilationDto.getPinned())

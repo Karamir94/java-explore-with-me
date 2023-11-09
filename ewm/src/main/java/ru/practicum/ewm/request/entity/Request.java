@@ -26,7 +26,7 @@ public class Request {
     private Long id;
 
     @Enumerated(STRING)
-    @Column(name = "status", length = 140)
+    @Column(name = "status", length = 250)
     private RequestStatus status;
 
     @Column(name = "event")

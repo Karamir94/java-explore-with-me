@@ -6,10 +6,8 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 import ru.practicum.ewm.category.exception.CategoryNotExistException;
 import ru.practicum.ewm.category.repository.CategoryRepository;
-//import ru.practicum.ewm.config.MyConfig;
 import ru.practicum.ewm.event.dto.*;
 import ru.practicum.ewm.event.entity.Event;
 import ru.practicum.ewm.event.enums.EventState;
@@ -52,15 +50,12 @@ public class EventServiceImpl implements EventService {
 
     ApplicationContext context =
             new AnnotationConfigApplicationContext("ru.practicum.stats.client");
-//    ApplicationContext context =
-//        new AnnotationConfigApplicationContext(MyConfig.class);
     private final CategoryRepository categoryRepository;
     private final EventRepository eventRepository;
     private final UserRepository userRepository;
     private final EntityManager entityManager;
     private final EventMapper eventMapper;
     private final StatsClient statsClient = context.getBean(StatsClient.class);
-//    private final StatsClient statsClient;
 
     @Override
     @Transactional
@@ -80,7 +75,6 @@ public class EventServiceImpl implements EventService {
                 () -> new UserNotExistException("User#" + userId + " does not exist"));
 
         event.setInitiator(user);
-//        event.setPublishedOn(LocalDateTime.now());
 
         return eventMapper.toLongEventDto(eventRepository.save(event));
     }
@@ -316,12 +310,11 @@ public class EventServiceImpl implements EventService {
                     throw new BadParamException("rangeEnd before than startTime");
                 }
             }
-            criteria = builder.and(criteria, builder.lessThanOrEqualTo(root.get("eventDate").as(LocalDateTime.class),
-                    end));
+        criteria = builder.and(criteria, builder.lessThanOrEqualTo(root.get("eventDate").as(LocalDateTime.class),
+                end));
 
         if (rangeStart != null)
-            criteria = builder.and(criteria, builder.greaterThanOrEqualTo(root.get("eventDate").as(LocalDateTime.class),
-                    start));
+            criteria = builder.and(criteria, builder.greaterThanOrEqualTo(root.get("eventDate").as(LocalDateTime.class), start));
 
         query.select(root).where(criteria).orderBy(builder.asc(root.get("eventDate")));
 
@@ -376,7 +369,6 @@ public class EventServiceImpl implements EventService {
                 .ip(request.getRemoteAddr())
                 .app("main")
                 .uri("/events")
-//                .timestamp(now.format(ofPattern(Patterns.DATE_PATTERN)))
                 .timestamp(now)
                 .build();
 
@@ -395,7 +387,6 @@ public class EventServiceImpl implements EventService {
                 .ip(request.getRemoteAddr())
                 .app("main")
                 .uri("/events")
-//                .timestamp(now.format(ofPattern(Patterns.DATE_PATTERN)))
                 .timestamp(now)
                 .build();
 
@@ -414,7 +405,6 @@ public class EventServiceImpl implements EventService {
                 .ip(remoteAddress)
                 .app("main")
                 .uri("/events/" + eventId)
-//                .timestamp(now.format(ofPattern(Patterns.DATE_PATTERN)))
                 .timestamp(now)
                 .build();
 
@@ -429,7 +419,6 @@ public class EventServiceImpl implements EventService {
                     .ip(remoteAddress)
                     .app("main")
                     .uri("/events/" + event.getId())
-//                    .timestamp(now.format(ofPattern(Patterns.DATE_PATTERN)))
                     .timestamp(now)
                     .build();
 
