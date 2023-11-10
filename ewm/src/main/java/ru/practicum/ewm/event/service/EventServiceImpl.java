@@ -302,7 +302,7 @@ public class EventServiceImpl implements EventService {
             criteria = builder.and(criteria, predicate);
         }
 
-        if (rangeEnd != null)
+        if (rangeEnd != null) {
             if (rangeStart != null) {
                 LocalDateTime startTime = LocalDateTime.parse(rangeStart, DateTimeFormatter.ofPattern(Patterns.DATE_PATTERN));
                 LocalDateTime finishTime = LocalDateTime.parse(rangeEnd, DateTimeFormatter.ofPattern(Patterns.DATE_PATTERN));
@@ -310,8 +310,9 @@ public class EventServiceImpl implements EventService {
                     throw new BadParamException("rangeEnd before than startTime");
                 }
             }
-        criteria = builder.and(criteria, builder.lessThanOrEqualTo(root.get("eventDate").as(LocalDateTime.class),
-                end));
+            criteria = builder.and(criteria, builder.lessThanOrEqualTo(root.get("eventDate").as(LocalDateTime.class),
+                    end));
+        }
 
         if (rangeStart != null)
             criteria = builder.and(criteria, builder.greaterThanOrEqualTo(root.get("eventDate").as(LocalDateTime.class), start));
