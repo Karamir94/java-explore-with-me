@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.stats.dto.HitDto;
 import ru.practicum.stats.dto.ViewStatsDto;
+import ru.practicum.stats.server.hit.exception.BadParamException;
 import ru.practicum.stats.server.hit.mapper.HitMapper;
 import ru.practicum.stats.server.hit.mapper.ViewStatsMapper;
 import ru.practicum.stats.server.hit.repository.StatsRepository;
@@ -36,6 +37,9 @@ public class HitServiceImpl implements HitService {
                                       LocalDateTime end,
                                       List<String> uris,
                                       boolean unique) {
+        if (start == null || end == null || end.isBefore(start)) {
+            throw new BadParamException("wrong start or end time");
+        }
         return statsRepository.getStats(start, end, uris, unique)
                 .stream()
                 .map(viewStatsMapper::toDto)
