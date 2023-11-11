@@ -14,6 +14,8 @@ import ru.practicum.ewm.request.dto.RequestUpdateResult;
 import ru.practicum.ewm.request.service.RequestService;
 
 import javax.validation.Valid;
+import javax.validation.constraints.Positive;
+import javax.validation.constraints.PositiveOrZero;
 import java.util.List;
 
 import static org.springframework.http.HttpStatus.CREATED;
@@ -35,8 +37,8 @@ public class EventPrivateController {
     }
 
     @GetMapping("/events")
-    public List<ShortEventDto> getEventsByUser(@RequestParam(required = false, defaultValue = "10") Integer size,
-                                               @RequestParam(required = false, defaultValue = "0") Integer from,
+    public List<ShortEventDto> getEventsByUser(@RequestParam(defaultValue = "10") @Positive Integer size,
+                                               @RequestParam(defaultValue = "0") @PositiveOrZero Integer from,
                                                @PathVariable Long userId) {
         return eventService.getEvents(userId, from, size);
     }

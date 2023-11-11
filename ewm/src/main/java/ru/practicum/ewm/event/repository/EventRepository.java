@@ -7,6 +7,7 @@ import ru.practicum.ewm.event.entity.Event;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public interface EventRepository extends JpaRepository<Event, Long> {
 
@@ -16,7 +17,7 @@ public interface EventRepository extends JpaRepository<Event, Long> {
 
     Optional<Event> findByIdAndPublishedOnIsNotNull(Long id);
 
-    List<Event> findAllByIdIn(List<Long> eventIds);
+    List<Event> findAllByIdIn(Set<Long> eventIds);
 
     Boolean existsByCategoryId(Long id);
 }

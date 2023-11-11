@@ -7,12 +7,12 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.ewm.category.dto.CategoryDto;
 import ru.practicum.ewm.category.dto.SavedCategoryDto;
 import ru.practicum.ewm.category.exception.CategoryNotEmptyException;
-import ru.practicum.ewm.category.exception.CategoryNotExistException;
 import ru.practicum.ewm.category.mapper.CategoryMapper;
 import ru.practicum.ewm.category.repository.CategoryRepository;
+import ru.practicum.ewm.error.exception.NotExistException;
 import ru.practicum.ewm.event.repository.EventRepository;
-import ru.practicum.ewm.user.exception.NameExistException;
 
+import java.sql.SQLIntegrityConstraintViolationException;
 import java.util.List;
 
 import static org.springframework.data.domain.PageRequest.of;
@@ -29,9 +29,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @Transactional
-    public CategoryDto saveCategory(SavedCategoryDto savedCategoryDto) {
-        if (categoryRepository.existsByName(savedCategoryDto.getName()))
-            throw new NameExistException("Category with name " + savedCategoryDto.getName() + " cannot be saved");
+    public CategoryDto saveCategory(SavedCategoryDto savedCategoryDto) throws SQLIntegrityConstraintViolationException {
         var entity = categoryMapper.toCategory(savedCategoryDto);
         var saved = categoryRepository.save(entity);
         return categoryMapper.toCategoryDto(saved);
@@ -39,14 +37,12 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @Transactional
-    public CategoryDto updateCategory(Long id, CategoryDto categoryDto) {
+    public CategoryDto updateCategory(Long id, CategoryDto categoryDto) throws SQLIntegrityConstraintViolationException {
         var category = categoryRepository.findById(id).orElseThrow(
-                () -> new CategoryNotExistException("Category#" + id + " does not exist"));
+                () -> new NotExistException("Category#" + id + " does not exist"));
         if (category.getName().equals(categoryDto.getName())) {
             return categoryMapper.toCategoryDto(category);
         }
-        if (categoryRepository.existsByName(categoryDto.getName()))
-            throw new NameExistException("Category with name " + categoryDto.getName() + " cannot be updated");
         category.setName(categoryDto.getName());
         var saved = categoryRepository.save(category);
         return categoryMapper.toCategoryDto(saved);
@@ -68,7 +64,7 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public CategoryDto getCategory(Long id) {
         var category = categoryRepository.findById(id).orElseThrow(
-                () -> new CategoryNotExistException("Category#" + id + " does not exist"));
+                () -> new NotExistException("Category#" + id + " does not exist"));
         return categoryMapper.toCategoryDto(category);
     }
 }

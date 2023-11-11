@@ -1,6 +1,7 @@
 package ru.practicum.ewm.event.service;
 
 import ru.practicum.ewm.event.dto.*;
+import ru.practicum.ewm.event.entity.Event;
 import ru.practicum.ewm.event.enums.EventState;
 import ru.practicum.ewm.event.enums.SortValue;
 
@@ -12,8 +13,10 @@ public interface EventService {
     LongEventDto saveEvent(Long userId,
                            SavedEventDto savedEventDto);
 
-    LongEventDto updateEvent(Long eventId,
-                             UpdateEventAdminDto updateEventAdminDto);
+    public Event updateEvent(UpdateEventDto updateEventDto, Event event);
+
+    public LongEventDto updateEventByAdmin(Long eventId,
+                                           UpdateEventAdminDto updateEventAdminDto);
 
     LongEventDto updateEventByUser(Long userId,
                                    Long eventId,

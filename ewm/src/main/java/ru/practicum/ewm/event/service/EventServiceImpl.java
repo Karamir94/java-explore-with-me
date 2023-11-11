@@ -6,16 +6,23 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.practicum.ewm.category.exception.CategoryNotExistException;
 import ru.practicum.ewm.category.repository.CategoryRepository;
+import ru.practicum.ewm.error.exception.BadParamException;
+import ru.practicum.ewm.error.exception.NotExistException;
+import ru.practicum.ewm.error.exception.WrongTimeException;
 import ru.practicum.ewm.event.dto.*;
 import ru.practicum.ewm.event.entity.Event;
+import ru.practicum.ewm.event.entity.Location;
 import ru.practicum.ewm.event.enums.EventState;
 import ru.practicum.ewm.event.enums.SortValue;
-import ru.practicum.ewm.event.exception.*;
+import ru.practicum.ewm.event.exception.EventCanceledException;
+import ru.practicum.ewm.event.exception.EventPublishedException;
 import ru.practicum.ewm.event.mapper.EventMapper;
+import ru.practicum.ewm.event.mapper.LocationMapper;
 import ru.practicum.ewm.event.repository.EventRepository;
-import ru.practicum.ewm.user.exception.UserNotExistException;
+import ru.practicum.ewm.request.enums.RequestStatus;
+import ru.practicum.ewm.request.repository.RequestRepository;
+import ru.practicum.ewm.request.service.RequestService;
 import ru.practicum.ewm.user.repository.UserRepository;
 import ru.practicum.ewm.utils.Patterns;
 import ru.practicum.stats.client.StatsClient;
@@ -27,17 +34,13 @@ import javax.persistence.criteria.Predicate;
 import javax.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static java.time.LocalDateTime.now;
 import static java.time.LocalDateTime.parse;
-import static java.time.format.DateTimeFormatter.ofPattern;
-import static java.util.Comparator.comparing;
-import static java.util.stream.Collectors.toList;
 import static org.springframework.data.domain.PageRequest.of;
 import static ru.practicum.ewm.event.enums.EventState.*;
-import static ru.practicum.ewm.event.enums.SortValue.EVENT_DATE;
 import static ru.practicum.ewm.event.enums.StateActionForAdmin.PUBLISH_EVENT;
 import static ru.practicum.ewm.event.enums.StateActionForAdmin.REJECT_EVENT;
 import static ru.practicum.ewm.event.enums.StateActionForUser.SEND_TO_REVIEW;
@@ -50,70 +53,100 @@ public class EventServiceImpl implements EventService {
 
     ApplicationContext context =
             new AnnotationConfigApplicationContext("ru.practicum.stats.client");
+    private final RequestService requestService;
     private final CategoryRepository categoryRepository;
     private final EventRepository eventRepository;
     private final UserRepository userRepository;
+    private final RequestRepository requestRepository;
     private final EntityManager entityManager;
     private final EventMapper eventMapper;
+    private final LocationMapper locationMapper;
     private final StatsClient statsClient = context.getBean(StatsClient.class);
+    private static DateTimeFormatter formatter = DateTimeFormatter.ofPattern(Patterns.DATE_PATTERN);
 
     @Override
     @Transactional
     public LongEventDto saveEvent(Long userId,
                                   SavedEventDto savedEventDto) {
         var category = categoryRepository.findById(savedEventDto.getCategory()).orElseThrow(
-                () -> new CategoryNotExistException("This category does not exist"));
+                () -> new NotExistException("This category does not exist"));
         var eventDate = savedEventDto.getEventDate();
 
         if (eventDate.isBefore(now().plusHours(2)))
-            throw new EventWrongTimeException("EventDate should be in future");
+            throw new WrongTimeException("EventDate should be in future");
 
+        Location location = locationMapper.toLocation(savedEventDto.getLocation());
         var event = eventMapper.toEvent(savedEventDto);
+
         event.setCategory(category);
+        event.setLocation(location);
 
         var user = userRepository.findById(userId).orElseThrow(
-                () -> new UserNotExistException("User#" + userId + " does not exist"));
+                () -> new NotExistException("User#" + userId + " does not exist"));
 
         event.setInitiator(user);
+        LongEventDto eventDto = eventMapper.toLongEventDto(eventRepository.save(event));
+        eventDto.setConfirmedRequests(0L);
+        eventDto.setViews(0L);
 
-        return eventMapper.toLongEventDto(eventRepository.save(event));
+        return eventDto;
     }
 
     @Override
     @Transactional
-    public LongEventDto updateEvent(Long eventId,
-                                    UpdateEventAdminDto updateEventAdminDto) {
-        var event = eventRepository.findById(eventId).orElseThrow(
-                () -> new EventNotExistException("Event#" + eventId + " does not exist"));
+    public Event updateEvent(UpdateEventDto updateEventDto, Event event) {
 
-        if (updateEventAdminDto == null)
-            return eventMapper.toLongEventDto(event);
+        if (updateEventDto == null)
+            return null;
 
-        if (updateEventAdminDto.getAnnotation() != null)
-            event.setAnnotation(updateEventAdminDto.getAnnotation());
+        if (updateEventDto.getAnnotation() != null && !updateEventDto.getAnnotation().isBlank())
+            event.setAnnotation(updateEventDto.getAnnotation());
 
-        if (updateEventAdminDto.getCategory() != null) {
-            var category = categoryRepository.findById(updateEventAdminDto.getCategory()).orElseThrow(
-                    () -> new CategoryNotExistException("This category does not exist"));
+        if (updateEventDto.getCategory() != null) {
+            var category = categoryRepository.findById(updateEventDto.getCategory()).orElseThrow(
+                    () -> new NotExistException("This category does not exist"));
             event.setCategory(category);
         }
-        if (updateEventAdminDto.getDescription() != null)
-            event.setDescription(updateEventAdminDto.getDescription());
+        if (updateEventDto.getDescription() != null && !updateEventDto.getDescription().isBlank())
+            event.setDescription(updateEventDto.getDescription());
 
-        if (updateEventAdminDto.getLocation() != null)
-            event.setLocation(updateEventAdminDto.getLocation());
+        if (updateEventDto.getLocation() != null)
+            event.setLocation(locationMapper.toLocation(updateEventDto.getLocation()));
 
-        if (updateEventAdminDto.getPaid() != null)
-            event.setPaid(updateEventAdminDto.getPaid());
+        if (updateEventDto.getPaid() != null)
+            event.setPaid(updateEventDto.getPaid());
 
-        if (updateEventAdminDto.getParticipantLimit() != null)
-            event.setParticipantLimit(updateEventAdminDto.getParticipantLimit().intValue());
+        if (updateEventDto.getParticipantLimit() != null)
+            event.setParticipantLimit(updateEventDto.getParticipantLimit().intValue());
 
-        if (updateEventAdminDto.getRequestModeration() != null)
-            event.setRequestModeration(updateEventAdminDto.getRequestModeration());
+        if (updateEventDto.getRequestModeration() != null)
+            event.setRequestModeration(updateEventDto.getRequestModeration());
 
-        if (updateEventAdminDto.getTitle() != null)
-            event.setTitle(updateEventAdminDto.getTitle());
+        if (updateEventDto.getTitle() != null && !updateEventDto.getTitle().isBlank())
+            event.setTitle(updateEventDto.getTitle());
+
+        if (updateEventDto.getEventDate() != null) {
+            var eventTime = updateEventDto.getEventDate();
+            if (eventTime.isBefore(now()) || event.getPublishedOn() != null
+                    && eventTime.isBefore(event.getPublishedOn().plusHours(1)))
+                throw new WrongTimeException("Wrong time");
+
+            event.setEventDate(updateEventDto.getEventDate());
+        }
+        return event;
+    }
+
+    @Override
+    @Transactional
+    public LongEventDto updateEventByAdmin(Long eventId,
+                                           UpdateEventAdminDto updateEventAdminDto) {
+        var event = eventRepository.findById(eventId).orElseThrow(
+                () -> new NotExistException("Event#" + eventId + " does not exist"));
+
+        event = updateEvent(updateEventAdminDto, event);
+
+        if (event == null)
+            return eventMapper.toLongEventDto(event);
 
         if (updateEventAdminDto.getStateAction() != null) {
             if (PUBLISH_EVENT.equals(updateEventAdminDto.getStateAction())) {
@@ -129,17 +162,12 @@ public class EventServiceImpl implements EventService {
                 event.setState(CANCELED);
             }
         }
-        if (updateEventAdminDto.getEventDate() != null) {
-            var eventTime = updateEventAdminDto.getEventDate();
-            if (eventTime.isBefore(now()) || event.getPublishedOn() != null
-                    && eventTime.isBefore(event.getPublishedOn().plusHours(1)))
-                throw new EventWrongTimeException("Wrong time");
 
-            event.setEventDate(updateEventAdminDto.getEventDate());
-        }
-        var saved = eventRepository.save(event);
+        LongEventDto eventDto = eventMapper.toLongEventDto(eventRepository.save(event));
+        addConfirmedRequest(eventDto);
+        eventDto.setViews(0L);
 
-        return eventMapper.toLongEventDto(saved);
+        return eventDto;
     }
 
     @Override
@@ -148,45 +176,15 @@ public class EventServiceImpl implements EventService {
                                           Long eventId,
                                           UpdateEventUserDto updateEventUserDto) {
         var event = eventRepository.findByIdAndInitiatorId(eventId, userId).orElseThrow(
-                () -> new EventNotExistException("Event#" + eventId + " does not exist"));
+                () -> new NotExistException("Event#" + eventId + " does not exist"));
 
         if (event.getPublishedOn() != null)
             throw new EventPublishedException("Event has been published");
 
-        if (updateEventUserDto == null)
+        event = updateEvent(updateEventUserDto, event);
+
+        if (event == null)
             return eventMapper.toLongEventDto(event);
-
-        if (updateEventUserDto.getAnnotation() != null)
-            event.setAnnotation(updateEventUserDto.getAnnotation());
-
-        if (updateEventUserDto.getCategory() != null) {
-            var category = categoryRepository.findById(updateEventUserDto.getCategory()).orElseThrow(
-                    () -> new CategoryNotExistException("This category does not exist"));
-            event.setCategory(category);
-        }
-        if (updateEventUserDto.getDescription() != null)
-            event.setDescription(updateEventUserDto.getDescription());
-
-        if (updateEventUserDto.getEventDate() != null) {
-            var eventTime = updateEventUserDto.getEventDate();
-            if (eventTime.isBefore(now().plusHours(2)))
-                throw new EventWrongTimeException("Wrong time");
-            event.setEventDate(updateEventUserDto.getEventDate());
-        }
-        if (updateEventUserDto.getLocation() != null)
-            event.setLocation(updateEventUserDto.getLocation());
-
-        if (updateEventUserDto.getPaid() != null)
-            event.setPaid(updateEventUserDto.getPaid());
-
-        if (updateEventUserDto.getParticipantLimit() != null)
-            event.setParticipantLimit(updateEventUserDto.getParticipantLimit().intValue());
-
-        if (updateEventUserDto.getRequestModeration() != null)
-            event.setRequestModeration(updateEventUserDto.getRequestModeration());
-
-        if (updateEventUserDto.getTitle() != null)
-            event.setTitle(updateEventUserDto.getTitle());
 
         if (updateEventUserDto.getStateAction() != null) {
             if (SEND_TO_REVIEW.equals(updateEventUserDto.getStateAction()))
@@ -194,7 +192,12 @@ public class EventServiceImpl implements EventService {
             else
                 event.setState(CANCELED);
         }
-        return eventMapper.toLongEventDto(eventRepository.save(event));
+
+        LongEventDto eventDto = eventMapper.toLongEventDto(eventRepository.save(event));
+        addConfirmedRequest(eventDto);
+        eventDto.setViews(getView(event));
+
+        return eventDto;
     }
 
     @Override
@@ -208,18 +211,24 @@ public class EventServiceImpl implements EventService {
     @Override
     public LongEventDto getEventByUser(Long userId,
                                        Long eventId) {
-        return eventMapper.toLongEventDto(eventRepository.findByIdAndInitiatorId(eventId, userId).orElseThrow(
-                () -> new EventNotExistException("Event#" + eventId + " does not exist")));
+        LongEventDto eventDto = eventMapper.toLongEventDto(eventRepository.findByIdAndInitiatorId(eventId, userId).orElseThrow(
+                () -> new NotExistException("Event#" + eventId + " does not exist")));
+
+        return eventDto;
     }
 
     @Override
     public LongEventDto getEvent(Long id,
                                  HttpServletRequest request) {
         var event = eventRepository.findByIdAndPublishedOnIsNotNull(id).orElseThrow(
-                () -> new EventNotExistException("Event#" + id + " does not exist"));
-        addView(event);
+                () -> new NotExistException("Event#" + id + " does not exist"));
+        long view = getView(event) + 1;
         sendStats(event, request);
-        return eventMapper.toLongEventDto(event);
+        LongEventDto eventDto = eventMapper.toLongEventDto(event);
+        addConfirmedRequest(eventDto);
+        eventDto.setViews(view);
+
+        return eventDto;
     }
 
     @Override
@@ -235,8 +244,8 @@ public class EventServiceImpl implements EventService {
         var root = query.from(Event.class);
         var criteria = builder.conjunction();
 
-        var start = rangeStart == null ? null : parse(rangeStart, ofPattern(Patterns.DATE_PATTERN));
-        var end = rangeEnd == null ? null : parse(rangeEnd, ofPattern(Patterns.DATE_PATTERN));
+        var start = rangeStart == null ? null : parse(rangeStart, formatter);
+        var end = rangeEnd == null ? null : parse(rangeEnd, formatter);
 
         if (rangeStart != null)
             criteria = builder.and(criteria, builder.greaterThanOrEqualTo(root.get("eventDate").as(LocalDateTime.class), start));
@@ -262,7 +271,20 @@ public class EventServiceImpl implements EventService {
 
         if (events.size() == 0) return new ArrayList<>();
 
-        return eventMapper.toLongEventDtos(events);
+        Map<Long, Long> views = getViews(events);
+        Map<Long, Long> requests = requestService.getConfirmedRequests(events);
+        List<LongEventDto> result = new ArrayList<>();
+
+        for (Event event : events) {
+            LongEventDto response = eventMapper.toLongEventDto(event);
+            Long cr = requests.getOrDefault(event.getId(), 0L);
+            response.setConfirmedRequests(cr);
+            response.setViews(views.getOrDefault(event.getId(), 0L));
+
+            result.add(response);
+        }
+
+        return result;
     }
 
     @Override
@@ -281,8 +303,8 @@ public class EventServiceImpl implements EventService {
         var root = query.from(Event.class);
         var criteria = builder.conjunction();
 
-        var start = rangeStart == null ? null : parse(rangeStart, ofPattern(Patterns.DATE_PATTERN));
-        var end = rangeEnd == null ? null : parse(rangeEnd, ofPattern(Patterns.DATE_PATTERN));
+        var start = rangeStart == null ? null : parse(rangeStart, formatter);
+        var end = rangeEnd == null ? null : parse(rangeEnd, formatter);
 
         if (text != null) {
             criteria = builder.and(criteria, builder.or(
@@ -304,8 +326,8 @@ public class EventServiceImpl implements EventService {
 
         if (rangeEnd != null) {
             if (rangeStart != null) {
-                LocalDateTime startTime = LocalDateTime.parse(rangeStart, DateTimeFormatter.ofPattern(Patterns.DATE_PATTERN));
-                LocalDateTime finishTime = LocalDateTime.parse(rangeEnd, DateTimeFormatter.ofPattern(Patterns.DATE_PATTERN));
+                LocalDateTime startTime = LocalDateTime.parse(rangeStart, formatter);
+                LocalDateTime finishTime = LocalDateTime.parse(rangeEnd, formatter);
                 if (startTime.isAfter(finishTime)) {
                     throw new BadParamException("rangeEnd before than startTime");
                 }
@@ -324,21 +346,6 @@ public class EventServiceImpl implements EventService {
                 .setMaxResults(size)
                 .getResultList();
 
-        if (available)
-            events = events.stream()
-                    .filter((event -> event.getConfirmedRequests() < (long) event.getParticipantLimit()))
-                    .collect(toList());
-
-        if (sort != null) {
-            if (EVENT_DATE.equals(sort))
-                events = events.stream()
-                        .sorted(comparing(Event::getEventDate))
-                        .collect(toList());
-            else
-                events = events.stream()
-                        .sorted(comparing(Event::getViews))
-                        .collect(toList());
-        }
         if (events.size() == 0) return new ArrayList<>();
 
         sendStats(events, request);
@@ -351,16 +358,43 @@ public class EventServiceImpl implements EventService {
         return statsClient.getStats(start, end, uris, false);
     }
 
-    private void addView(Event event) {
-        var start = event.getCreatedOn().format(ofPattern(Patterns.DATE_PATTERN));
-        var end = now().format(ofPattern(Patterns.DATE_PATTERN));
+    private long getView(Event event) {
+        var start = event.getCreatedOn().format(formatter);
+        var end = now().format(formatter);
         var uris = List.of("/events/" + event.getId());
         var stats = getStats(start, end, uris);
 
         if (stats.size() == 1)
-            event.setViews(stats.get(0).getHits());
+            return stats.get(0).getHits();
         else
-            event.setViews(1L);
+            return 0L;
+    }
+
+    private Map<Long, Long> getViews(List<Event> events) {
+        events.sort(Comparator.comparing(Event::getCreatedOn));
+        var startDate = events.get(0).getCreatedOn().format(formatter);
+        var endDate = now().format(formatter);
+        List<Long> ids = events.stream()
+                .map(Event::getId)
+                .collect(Collectors.toList());
+        List<String> uris = new ArrayList<>();
+
+        for (Long id : ids) {
+            uris.add("/events/" + id);
+        }
+        var stats = statsClient.getStats(startDate, endDate, uris, false);
+
+        Map<Long, Long> result = new HashMap<>();
+
+        for (int i = 0; i < stats.size(); i++) {
+            result.put(ids.get(i), stats.get(i).getHits());
+        }
+
+        return result;
+    }
+
+    private void addConfirmedRequest(LongEventDto event) {
+        event.setConfirmedRequests(requestRepository.countAllByEventAndStatus(event.getId(), RequestStatus.CONFIRMED));
     }
 
     private void sendStats(Event event,

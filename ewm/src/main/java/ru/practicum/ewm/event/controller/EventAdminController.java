@@ -9,6 +9,8 @@ import ru.practicum.ewm.event.enums.EventState;
 import ru.practicum.ewm.event.service.EventService;
 
 import javax.validation.Valid;
+import javax.validation.constraints.Positive;
+import javax.validation.constraints.PositiveOrZero;
 import java.util.List;
 
 @Validated
@@ -20,8 +22,8 @@ public class EventAdminController {
     private final EventService eventService;
 
     @GetMapping("/events")
-    public List<LongEventDto> getEvents(@RequestParam(required = false, defaultValue = "10") Integer size,
-                                        @RequestParam(required = false, defaultValue = "0") Integer from,
+    public List<LongEventDto> getEvents(@RequestParam(defaultValue = "10") @Positive Integer size,
+                                        @RequestParam(defaultValue = "0") @PositiveOrZero Integer from,
                                         @RequestParam(required = false) List<Long> categories,
                                         @RequestParam(required = false) EventState states,
                                         @RequestParam(required = false) String rangeStart,
@@ -33,6 +35,6 @@ public class EventAdminController {
     @PatchMapping("/events/{eventId}")
     public LongEventDto updateEvent(@Valid @RequestBody UpdateEventAdminDto updateEventAdminDto,
                                     @PathVariable Long eventId) {
-        return eventService.updateEvent(eventId, updateEventAdminDto);
+        return eventService.updateEventByAdmin(eventId, updateEventAdminDto);
     }
 }

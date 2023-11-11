@@ -1,4 +1,4 @@
-package ru.practicum.ewm.event.exception;
+package ru.practicum.ewm.error.exception;
 
 public class BadParamException extends RuntimeException {
 

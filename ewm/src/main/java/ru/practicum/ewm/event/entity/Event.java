@@ -34,9 +34,6 @@ public class Event {
     @Column(name = "annotation", length = 2000)
     private String annotation;
 
-    @Column(name = "confirmed_requests")
-    private int confirmedRequests;
-
     @Column(name = "created_on")
     private LocalDateTime createdOn;
 
@@ -77,13 +74,9 @@ public class Event {
     @Column(name = "title", length = 120)
     private String title;
 
-    @Column(name = "views")
-    private Long views;
-
     public Event(Long id,
                  String annotation,
                  Category category,
-                 int confirmedRequests,
                  LocalDateTime createdOn,
                  String description,
                  LocalDateTime eventDate,
@@ -94,12 +87,10 @@ public class Event {
                  LocalDateTime publishedOn,
                  Boolean requestModeration,
                  EventState eventState,
-                 String title,
-                 Long views) {
+                 String title) {
         this.requestModeration = requireNonNullElse(requestModeration, true);
         this.createdOn = requireNonNullElseGet(createdOn, LocalDateTime::now);
         this.state = requireNonNullElse(eventState, PENDING);
-        this.confirmedRequests = confirmedRequests;
         this.participantLimit = participantLimit;
         this.description = description;
         this.annotation = annotation;
@@ -109,7 +100,6 @@ public class Event {
         this.category = category;
         this.location = location;
         this.title = title;
-        this.views = views;
         this.paid = paid;
         this.id = id;
     }

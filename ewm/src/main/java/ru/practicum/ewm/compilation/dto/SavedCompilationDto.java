@@ -4,7 +4,7 @@ import lombok.*;
 
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Size;
-import java.util.List;
+import java.util.Set;
 
 @Getter
 @Setter
@@ -18,5 +18,5 @@ public class SavedCompilationDto {
     private String title;
 
     private Boolean pinned;
-    private List<Long> events;
+    private Set<Long> events;
 }

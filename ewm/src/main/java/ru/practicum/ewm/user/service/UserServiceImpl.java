@@ -4,8 +4,8 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.practicum.ewm.error.exception.AlreadyExistException;
 import ru.practicum.ewm.user.dto.UserDto;
-import ru.practicum.ewm.user.exception.NameExistException;
 import ru.practicum.ewm.user.mapper.UserMapper;
 import ru.practicum.ewm.user.repository.UserRepository;
 
@@ -26,7 +26,7 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public UserDto saveUser(UserDto userDto) {
         if (userRepository.existsByName(userDto.getName()))
-            throw new NameExistException("User with name " + userDto.getName() + " cannot be saved");
+            throw new AlreadyExistException("User with name " + userDto.getName() + " cannot be saved");
         var user = userMapper.toUser(userDto);
         var saved = userRepository.save(user);
         return userMapper.toUserDto(saved);

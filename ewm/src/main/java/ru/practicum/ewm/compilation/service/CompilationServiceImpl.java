@@ -8,9 +8,9 @@ import ru.practicum.ewm.compilation.dto.CompilationDto;
 import ru.practicum.ewm.compilation.dto.CompilationUpdateRequest;
 import ru.practicum.ewm.compilation.dto.SavedCompilationDto;
 import ru.practicum.ewm.compilation.entity.Compilation;
-import ru.practicum.ewm.compilation.exception.CompilationNotExistException;
 import ru.practicum.ewm.compilation.mapper.CompilationMapper;
 import ru.practicum.ewm.compilation.repository.CompilationRepository;
+import ru.practicum.ewm.error.exception.NotExistException;
 import ru.practicum.ewm.event.entity.Event;
 import ru.practicum.ewm.event.repository.EventRepository;
 
@@ -61,7 +61,7 @@ public class CompilationServiceImpl implements CompilationService {
     public CompilationDto updateCompilation(Long compId,
                                             CompilationUpdateRequest compilationUpdateRequest) {
         var old = compilationRepository.findById(compId).orElseThrow(
-                () -> new CompilationNotExistException("Compilation does not exist"));
+                () -> new NotExistException("Compilation does not exist"));
         var eventsIds = compilationUpdateRequest.getEvents();
         if (eventsIds != null) {
             var events = eventRepository.findAllByIdIn(compilationUpdateRequest.getEvents());
@@ -69,7 +69,7 @@ public class CompilationServiceImpl implements CompilationService {
         }
         if (compilationUpdateRequest.getPinned() != null)
             old.setPinned(compilationUpdateRequest.getPinned());
-        if (compilationUpdateRequest.getTitle() != null)
+        if (compilationUpdateRequest.getTitle() != null && !compilationUpdateRequest.getTitle().isBlank())
             old.setTitle(compilationUpdateRequest.getTitle());
 
         var updated = compilationRepository.save(old);
@@ -79,7 +79,7 @@ public class CompilationServiceImpl implements CompilationService {
     @Override
     public CompilationDto getCompilation(Long compId) {
         var compilation = compilationRepository.findById(compId).orElseThrow(
-                () -> new CompilationNotExistException("Compilation does not exist"));
+                () -> new NotExistException("Compilation does not exist"));
         return compilationMapper.mapToCompilationDto(compilation);
     }
 

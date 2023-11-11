@@ -7,6 +7,8 @@ import ru.practicum.ewm.user.dto.UserDto;
 import ru.practicum.ewm.user.service.UserService;
 
 import javax.validation.Valid;
+import javax.validation.constraints.Positive;
+import javax.validation.constraints.PositiveOrZero;
 import java.util.List;
 
 import static org.springframework.http.HttpStatus.CREATED;
@@ -28,8 +30,8 @@ public class UserAdminController {
 
     @GetMapping("/users")
     public List<UserDto> getUsers(@RequestParam(required = false) List<Long> ids,
-                                  @RequestParam(defaultValue = "10") Integer size,
-                                  @RequestParam(defaultValue = "0") Integer from) {
+                                  @RequestParam(defaultValue = "10") @Positive Integer size,
+                                  @RequestParam(defaultValue = "0") @PositiveOrZero Integer from) {
         return userService.getUsers(ids, from, size);
     }
 

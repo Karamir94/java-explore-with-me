@@ -3,26 +3,29 @@ package ru.practicum.ewm.request.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.practicum.ewm.event.exception.EventNotExistException;
+import ru.practicum.ewm.error.exception.AlreadyExistException;
+import ru.practicum.ewm.error.exception.NotExistException;
+import ru.practicum.ewm.event.entity.Event;
 import ru.practicum.ewm.event.exception.EventNotPublishedException;
 import ru.practicum.ewm.event.repository.EventRepository;
 import ru.practicum.ewm.request.dto.RequestDto;
 import ru.practicum.ewm.request.dto.RequestUpdateDto;
 import ru.practicum.ewm.request.dto.RequestUpdateResult;
 import ru.practicum.ewm.request.entity.Request;
+import ru.practicum.ewm.request.entity.RequestEvent;
 import ru.practicum.ewm.request.enums.RequestStatus;
 import ru.practicum.ewm.request.enums.RequestUpdateStatus;
 import ru.practicum.ewm.request.exception.RequestConfirmedException;
-import ru.practicum.ewm.request.exception.RequestExistException;
-import ru.practicum.ewm.request.exception.RequestNotExistException;
 import ru.practicum.ewm.request.exception.RequestParticipantLimitException;
 import ru.practicum.ewm.request.mapper.RequestMapper;
 import ru.practicum.ewm.request.repository.RequestRepository;
-import ru.practicum.ewm.user.exception.UserNotExistException;
 import ru.practicum.ewm.user.exception.WrongUserException;
 import ru.practicum.ewm.user.repository.UserRepository;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import static java.time.LocalDateTime.now;
 import static java.util.stream.Collectors.toList;
@@ -40,7 +43,7 @@ public class RequestServiceImpl implements RequestService {
     @Override
     public List<RequestDto> getCurrentUserRequests(Long userId) {
         userRepository.findById(userId).orElseThrow(
-                () -> new UserNotExistException("User#" + userId + " does not exist"));
+                () -> new NotExistException("User#" + userId + " does not exist"));
 
         return requestMapper.toRequestDtos(requestRepository.findAllByRequester(userId));
     }
@@ -53,7 +56,7 @@ public class RequestServiceImpl implements RequestService {
     @Override
     public RequestDto cancelRequest(Long userId, Long requestId) {
         var request = requestRepository.findByRequesterAndId(userId, requestId).orElseThrow(
-                () -> new RequestNotExistException("Request#" + requestId + " does not exist"));
+                () -> new NotExistException("Request#" + requestId + " does not exist"));
         request.setStatus(RequestStatus.CANCELED);
 
         return requestMapper.toRequestDto(requestRepository.save(request));
@@ -63,13 +66,14 @@ public class RequestServiceImpl implements RequestService {
     @Transactional
     public RequestDto saveRequest(Long userId, Long eventId) {
         if (requestRepository.existsByRequesterAndEvent(userId, eventId))
-            throw new RequestExistException("Request is already exist");
+            throw new AlreadyExistException("Request is already exist");
 
         var event = eventRepository.findById(eventId).orElseThrow(
-                () -> new EventNotExistException("Event#" + eventId + " does not exist"));
+                () -> new NotExistException("Event#" + eventId + " does not exist"));
 
         if (event.getInitiator().getId().equals(userId))
             throw new WrongUserException("Request cannot be created by the initiator#" + userId);
+
         if (event.getPublishedOn() == null)
             throw new EventNotPublishedException("Event has not been published yet");
 
@@ -92,7 +96,7 @@ public class RequestServiceImpl implements RequestService {
     @Transactional
     public RequestUpdateResult updateRequests(Long userId, Long eventId, RequestUpdateDto requestUpdateDto) {
         var event = eventRepository.findById(eventId).orElseThrow(
-                () -> new EventNotExistException("Event#" + eventId + " does not exist"));
+                () -> new NotExistException("Event#" + eventId + " does not exist"));
 
         var result = new RequestUpdateResult();
 
@@ -107,7 +111,8 @@ public class RequestServiceImpl implements RequestService {
                 .anyMatch(request -> RequestStatus.CONFIRMED.equals(request.getStatus())
                         && RequestUpdateStatus.REJECTED.equals(requestUpdateDto.getStatus())))
             throw new RequestConfirmedException("Request has been already confirmed");
-        if (event.getConfirmedRequests() + requestsToUpdate.size() > event.getParticipantLimit()
+        if (requestRepository.countAllByEventAndStatus(eventId, RequestStatus.CONFIRMED)
+                + requestsToUpdate.size() > event.getParticipantLimit()
                 && RequestUpdateStatus.CONFIRMED.equals(requestUpdateDto.getStatus()))
             throw new RequestParticipantLimitException("Participants limit has been exceeded");
 
@@ -116,9 +121,6 @@ public class RequestServiceImpl implements RequestService {
 
         requestRepository.saveAll(requestsToUpdate);
 
-        if (RequestUpdateStatus.CONFIRMED.equals(requestUpdateDto.getStatus()))
-            event.setConfirmedRequests(requestsToUpdate.size() + event.getConfirmedRequests());
-
         eventRepository.save(event);
 
         if (RequestUpdateStatus.REJECTED.equals(requestUpdateDto.getStatus()))
@@ -126,6 +128,23 @@ public class RequestServiceImpl implements RequestService {
         if (RequestUpdateStatus.CONFIRMED.equals(requestUpdateDto.getStatus()))
             result.setConfirmedRequests(requestMapper.toRequestDtos(requestsToUpdate));
 
+        return result;
+    }
+
+    @Override
+    public Map<Long, Long> getConfirmedRequests(List<Event> events) {
+        List<Long> ids = events.stream()
+                .map(Event::getId)
+                .collect(Collectors.toList());
+
+        List<RequestEvent> req = requestRepository.getConfirmedRequests(ids);
+        if (req.isEmpty()) {
+            return new HashMap<>();
+        }
+        Map<Long, Long> result = new HashMap<>();
+        for (RequestEvent ev : req) {
+            result.put(ev.getEventId(), ev.getCount().longValue());
+        }
         return result;
     }
 }
