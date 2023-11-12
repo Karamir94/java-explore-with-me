@@ -264,7 +264,7 @@ public class EventServiceImpl implements EventService {
 
         query.select(root).where(criteria);
 
-        var events = entityManager.createQuery(query)
+        List<Event> events = entityManager.createQuery(query)
                 .setFirstResult(from)
                 .setMaxResults(size)
                 .getResultList();
@@ -272,19 +272,24 @@ public class EventServiceImpl implements EventService {
         if (events.size() == 0) return new ArrayList<>();
 
         Map<Long, Long> views = getViews(events);
-        Map<Long, Long> requests = requestService.getConfirmedRequests(events);
-        List<LongEventDto> result = new ArrayList<>();
+        List<LongEventDto> eventDtos = eventMapper.toLongEventDtos(events);
+//        Map<Long, Long> requests = requestService.getConfirmedRequests(events);
+//        List<LongEventDto> result = new ArrayList<>();
+//
+//        for (Event event : events) {
+//            LongEventDto response = eventMapper.toLongEventDto(event);
+//            response.setConfirmedRequests(requests.getOrDefault(event.getId(), 0L));
+//            response.setViews(views.getOrDefault(event.getId(), 0L));
+//
+//            result.add(response);
+//        }
+        eventDtos = eventDtos.stream()
+                .peek(dto -> dto.setConfirmedRequests(
+                        requestRepository.countAllByEventAndStatus(dto.getId(), RequestStatus.CONFIRMED)))
+                .peek(dto -> dto.setViews(views.getOrDefault(dto.getId(), 0L)))
+                .collect(Collectors.toList());
 
-        for (Event event : events) {
-            LongEventDto response = eventMapper.toLongEventDto(event);
-            Long cr = requests.getOrDefault(event.getId(), 0L);
-            response.setConfirmedRequests(cr);
-            response.setViews(views.getOrDefault(event.getId(), 0L));
-
-            result.add(response);
-        }
-
-        return result;
+        return eventDtos;
     }
 
     @Override
