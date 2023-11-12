@@ -5,14 +5,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.ewm.error.exception.AlreadyExistException;
 import ru.practicum.ewm.error.exception.NotExistException;
-import ru.practicum.ewm.event.entity.Event;
 import ru.practicum.ewm.event.exception.EventNotPublishedException;
 import ru.practicum.ewm.event.repository.EventRepository;
 import ru.practicum.ewm.request.dto.RequestDto;
 import ru.practicum.ewm.request.dto.RequestUpdateDto;
 import ru.practicum.ewm.request.dto.RequestUpdateResult;
 import ru.practicum.ewm.request.entity.Request;
-import ru.practicum.ewm.request.entity.RequestEvent;
 import ru.practicum.ewm.request.enums.RequestStatus;
 import ru.practicum.ewm.request.enums.RequestUpdateStatus;
 import ru.practicum.ewm.request.exception.RequestConfirmedException;
@@ -22,10 +20,7 @@ import ru.practicum.ewm.request.repository.RequestRepository;
 import ru.practicum.ewm.user.exception.WrongUserException;
 import ru.practicum.ewm.user.repository.UserRepository;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 import static java.time.LocalDateTime.now;
 import static java.util.stream.Collectors.toList;
@@ -128,23 +123,6 @@ public class RequestServiceImpl implements RequestService {
         if (RequestUpdateStatus.CONFIRMED.equals(requestUpdateDto.getStatus()))
             result.setConfirmedRequests(requestMapper.toRequestDtos(requestsToUpdate));
 
-        return result;
-    }
-
-    @Override
-    public Map<Long, Long> getConfirmedRequests(List<Event> events) {
-        List<Long> ids = events.stream()
-                .map(Event::getId)
-                .collect(Collectors.toList());
-
-        List<RequestEvent> req = requestRepository.getConfirmedRequests(ids);
-        if (req.isEmpty()) {
-            return new HashMap<>();
-        }
-        Map<Long, Long> result = new HashMap<>();
-        for (RequestEvent ev : req) {
-            result.put(ev.getEventId(), ev.getCount().longValue());
-        }
         return result;
     }
 }

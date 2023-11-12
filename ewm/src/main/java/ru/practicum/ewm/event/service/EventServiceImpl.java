@@ -22,7 +22,6 @@ import ru.practicum.ewm.event.mapper.LocationMapper;
 import ru.practicum.ewm.event.repository.EventRepository;
 import ru.practicum.ewm.request.enums.RequestStatus;
 import ru.practicum.ewm.request.repository.RequestRepository;
-import ru.practicum.ewm.request.service.RequestService;
 import ru.practicum.ewm.user.repository.UserRepository;
 import ru.practicum.ewm.utils.Patterns;
 import ru.practicum.stats.client.StatsClient;
@@ -53,7 +52,6 @@ public class EventServiceImpl implements EventService {
 
     ApplicationContext context =
             new AnnotationConfigApplicationContext("ru.practicum.stats.client");
-    private final RequestService requestService;
     private final CategoryRepository categoryRepository;
     private final EventRepository eventRepository;
     private final UserRepository userRepository;
@@ -273,16 +271,7 @@ public class EventServiceImpl implements EventService {
 
         Map<Long, Long> views = getViews(events);
         List<LongEventDto> eventDtos = eventMapper.toLongEventDtos(events);
-//        Map<Long, Long> requests = requestService.getConfirmedRequests(events);
-//        List<LongEventDto> result = new ArrayList<>();
-//
-//        for (Event event : events) {
-//            LongEventDto response = eventMapper.toLongEventDto(event);
-//            response.setConfirmedRequests(requests.getOrDefault(event.getId(), 0L));
-//            response.setViews(views.getOrDefault(event.getId(), 0L));
-//
-//            result.add(response);
-//        }
+
         eventDtos = eventDtos.stream()
                 .peek(dto -> dto.setConfirmedRequests(
                         requestRepository.countAllByEventAndStatus(dto.getId(), RequestStatus.CONFIRMED)))
