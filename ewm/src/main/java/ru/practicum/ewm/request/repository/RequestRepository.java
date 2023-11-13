@@ -4,6 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import ru.practicum.ewm.request.entity.Request;
+import ru.practicum.ewm.request.entity.RequestEvent;
 import ru.practicum.ewm.request.enums.RequestStatus;
 
 import java.util.List;
@@ -28,4 +29,10 @@ public interface RequestRepository extends JpaRepository<Request, Long> {
     List<Request> findAllByEvent(Long eventId);
 
     Long countAllByEventAndStatus(Long eventId, RequestStatus status);
+
+    @Query("select new ru.practicum.ewm.request.entity.RequestEvent(r.event, count(r.id)) from Request as r " +
+            "where r.event in :ids and r.status = 'CONFIRMED' " +
+            "group by r.event " +
+            "order by r.event ")
+    List<RequestEvent> getConfirmedRequests(@Param("ids") List<Long> ids);
 }

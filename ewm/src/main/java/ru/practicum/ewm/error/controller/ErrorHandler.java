@@ -34,7 +34,7 @@ import static org.springframework.http.HttpStatus.*;
 @RestControllerAdvice
 public class ErrorHandler {
 
-    private static DateTimeFormatter formatter = DateTimeFormatter.ofPattern(Patterns.DATE_PATTERN);
+    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern(Patterns.DATE_PATTERN);
 
     @ExceptionHandler({MethodArgumentTypeMismatchException.class,
             MethodArgumentNotValidException.class,

@@ -41,6 +41,7 @@ public class SavedEventDto {
     private LocalDateTime eventDate;
 
     @Valid
+    @NotNull
     private LocationDto location;
 
     private boolean paid;

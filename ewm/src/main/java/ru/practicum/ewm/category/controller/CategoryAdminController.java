@@ -7,7 +7,6 @@ import ru.practicum.ewm.category.dto.SavedCategoryDto;
 import ru.practicum.ewm.category.service.CategoryService;
 
 import javax.validation.Valid;
-import java.sql.SQLIntegrityConstraintViolationException;
 
 import static org.springframework.http.HttpStatus.CREATED;
 import static org.springframework.http.HttpStatus.NO_CONTENT;
@@ -21,13 +20,13 @@ public class CategoryAdminController {
 
     @ResponseStatus(CREATED)
     @PostMapping("/categories")
-    public CategoryDto saveCategory(@Valid @RequestBody SavedCategoryDto savedCategoryDto) throws SQLIntegrityConstraintViolationException {
+    public CategoryDto saveCategory(@Valid @RequestBody SavedCategoryDto savedCategoryDto) {
         return categoryService.saveCategory(savedCategoryDto);
     }
 
     @PatchMapping("/categories/{catId}")
     public CategoryDto updateCategory(@Valid @RequestBody CategoryDto categoryDto,
-                                      @PathVariable Long catId) throws SQLIntegrityConstraintViolationException {
+                                      @PathVariable Long catId) {
         return categoryService.updateCategory(catId, categoryDto);
     }
 

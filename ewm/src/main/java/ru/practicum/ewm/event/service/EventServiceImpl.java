@@ -2,8 +2,6 @@ package ru.practicum.ewm.event.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.ewm.category.repository.CategoryRepository;
@@ -20,6 +18,7 @@ import ru.practicum.ewm.event.exception.EventPublishedException;
 import ru.practicum.ewm.event.mapper.EventMapper;
 import ru.practicum.ewm.event.mapper.LocationMapper;
 import ru.practicum.ewm.event.repository.EventRepository;
+import ru.practicum.ewm.request.entity.RequestEvent;
 import ru.practicum.ewm.request.enums.RequestStatus;
 import ru.practicum.ewm.request.repository.RequestRepository;
 import ru.practicum.ewm.user.repository.UserRepository;
@@ -50,8 +49,6 @@ import static ru.practicum.ewm.event.enums.StateActionForUser.SEND_TO_REVIEW;
 @Transactional(readOnly = true)
 public class EventServiceImpl implements EventService {
 
-    ApplicationContext context =
-            new AnnotationConfigApplicationContext("ru.practicum.stats.client");
     private final CategoryRepository categoryRepository;
     private final EventRepository eventRepository;
     private final UserRepository userRepository;
@@ -59,8 +56,8 @@ public class EventServiceImpl implements EventService {
     private final EntityManager entityManager;
     private final EventMapper eventMapper;
     private final LocationMapper locationMapper;
-    private final StatsClient statsClient = context.getBean(StatsClient.class);
-    private static DateTimeFormatter formatter = DateTimeFormatter.ofPattern(Patterns.DATE_PATTERN);
+    private final StatsClient statsClient;
+    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern(Patterns.DATE_PATTERN);
 
     @Override
     @Transactional
@@ -267,14 +264,15 @@ public class EventServiceImpl implements EventService {
                 .setMaxResults(size)
                 .getResultList();
 
-        if (events.size() == 0) return new ArrayList<>();
+        if (events.size() == 0) return List.of();
 
         Map<Long, Long> views = getViews(events);
+        Map<Long, Long> confirmedRequests = getConfirmedRequests(events);
         List<LongEventDto> eventDtos = eventMapper.toLongEventDtos(events);
 
         eventDtos = eventDtos.stream()
                 .peek(dto -> dto.setConfirmedRequests(
-                        requestRepository.countAllByEventAndStatus(dto.getId(), RequestStatus.CONFIRMED)))
+                        confirmedRequests.getOrDefault(dto.getId(), 0L)))
                 .peek(dto -> dto.setViews(views.getOrDefault(dto.getId(), 0L)))
                 .collect(Collectors.toList());
 
@@ -344,6 +342,22 @@ public class EventServiceImpl implements EventService {
 
         sendStats(events, request);
         return eventMapper.toLongEventDtos(events);
+    }
+
+    private Map<Long, Long> getConfirmedRequests(List<Event> events) {
+        List<Long> ids = events.stream()
+                .map(Event::getId)
+                .collect(Collectors.toList());
+
+        List<RequestEvent> req = requestRepository.getConfirmedRequests(ids);
+        if (req.isEmpty()) {
+            return new HashMap<>();
+        }
+        Map<Long, Long> result = new HashMap<>();
+        for (RequestEvent ev : req) {
+            result.put(ev.getEventId(), ev.getCount().longValue());
+        }
+        return result;
     }
 
     private List<ViewStatsDto> getStats(String start,

@@ -41,7 +41,7 @@ public class CompilationServiceImpl implements CompilationService {
         }
 
         var compilation = Compilation.builder()
-                .pinned(savedCompilationDto.getPinned() == null ? false : savedCompilationDto.getPinned())
+                .pinned(savedCompilationDto.getPinned() != null && savedCompilationDto.getPinned())
                 .title(savedCompilationDto.getTitle())
                 .events(new HashSet<>(events))
                 .build();
@@ -64,7 +64,7 @@ public class CompilationServiceImpl implements CompilationService {
                 () -> new NotExistException("Compilation does not exist"));
         var eventsIds = compilationUpdateRequest.getEvents();
         if (eventsIds != null) {
-            var events = eventRepository.findAllByIdIn(compilationUpdateRequest.getEvents());
+            var events = eventRepository.findAllByIdIn(eventsIds);
             old.setEvents(new HashSet<>(events));
         }
         if (compilationUpdateRequest.getPinned() != null)

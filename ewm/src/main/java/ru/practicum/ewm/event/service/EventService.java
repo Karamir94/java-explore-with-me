@@ -13,10 +13,10 @@ public interface EventService {
     LongEventDto saveEvent(Long userId,
                            SavedEventDto savedEventDto);
 
-    public Event updateEvent(UpdateEventDto updateEventDto, Event event);
+    Event updateEvent(UpdateEventDto updateEventDto, Event event);
 
-    public LongEventDto updateEventByAdmin(Long eventId,
-                                           UpdateEventAdminDto updateEventAdminDto);
+    LongEventDto updateEventByAdmin(Long eventId,
+                                    UpdateEventAdminDto updateEventAdminDto);
 
     LongEventDto updateEventByUser(Long userId,
                                    Long eventId,

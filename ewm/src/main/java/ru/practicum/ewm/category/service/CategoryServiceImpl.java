@@ -12,7 +12,6 @@ import ru.practicum.ewm.category.repository.CategoryRepository;
 import ru.practicum.ewm.error.exception.NotExistException;
 import ru.practicum.ewm.event.repository.EventRepository;
 
-import java.sql.SQLIntegrityConstraintViolationException;
 import java.util.List;
 
 import static org.springframework.data.domain.PageRequest.of;
@@ -29,7 +28,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @Transactional
-    public CategoryDto saveCategory(SavedCategoryDto savedCategoryDto) throws SQLIntegrityConstraintViolationException {
+    public CategoryDto saveCategory(SavedCategoryDto savedCategoryDto) {
         var entity = categoryMapper.toCategory(savedCategoryDto);
         var saved = categoryRepository.save(entity);
         return categoryMapper.toCategoryDto(saved);
@@ -37,7 +36,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @Transactional
-    public CategoryDto updateCategory(Long id, CategoryDto categoryDto) throws SQLIntegrityConstraintViolationException {
+    public CategoryDto updateCategory(Long id, CategoryDto categoryDto) {
         var category = categoryRepository.findById(id).orElseThrow(
                 () -> new NotExistException("Category#" + id + " does not exist"));
         if (category.getName().equals(categoryDto.getName())) {
