@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.ewm.event.dto.LongEventDto;
-import ru.practicum.ewm.event.enums.SortValue;
+import ru.practicum.ewm.event.dto.ShortEventDto;
 import ru.practicum.ewm.event.service.EventService;
 
 import javax.servlet.http.HttpServletRequest;
@@ -26,16 +26,16 @@ public class EventPublicController {
     }
 
     @GetMapping
-    public List<LongEventDto> getEventsWithParamsByUser(@RequestParam(defaultValue = "10") @Positive Integer size,
-                                                        @RequestParam(defaultValue = "0") @PositiveOrZero Integer from,
-                                                        @RequestParam(defaultValue = "false") boolean onlyAvailable,
-                                                        @RequestParam(required = false) List<Long> categories,
-                                                        @RequestParam(required = false) String rangeStart,
-                                                        @RequestParam(required = false) String rangeEnd,
-                                                        @RequestParam(required = false) SortValue sort,
-                                                        @RequestParam(required = false) Boolean paid,
-                                                        @RequestParam(required = false) String text,
-                                                        HttpServletRequest request) {
+    public List<ShortEventDto> getEventsWithParamsByUser(@RequestParam(defaultValue = "10") @Positive Integer size,
+                                                         @RequestParam(defaultValue = "0") @PositiveOrZero Integer from,
+                                                         @RequestParam(defaultValue = "false") boolean onlyAvailable,
+                                                         @RequestParam(required = false) List<Long> categories,
+                                                         @RequestParam(required = false) String rangeStart,
+                                                         @RequestParam(required = false) String rangeEnd,
+                                                         @RequestParam(required = false) String sort,
+                                                         @RequestParam(required = false) Boolean paid,
+                                                         @RequestParam(required = false) String text,
+                                                         HttpServletRequest request) {
         return eventService.getEventsWithParamsByUser(text, categories, paid, rangeStart, rangeEnd, onlyAvailable,
                 sort, from, size, request);
     }

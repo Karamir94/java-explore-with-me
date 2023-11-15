@@ -2,6 +2,9 @@ package ru.practicum.ewm.compilation.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.ewm.compilation.dto.CompilationDto;
@@ -14,8 +17,6 @@ import ru.practicum.ewm.error.exception.NotExistException;
 import ru.practicum.ewm.event.entity.Event;
 import ru.practicum.ewm.event.repository.EventRepository;
 
-import javax.persistence.EntityManager;
-import javax.persistence.criteria.Predicate;
 import java.util.HashSet;
 import java.util.List;
 
@@ -28,7 +29,6 @@ public class CompilationServiceImpl implements CompilationService {
     private final CompilationRepository compilationRepository;
     private final CompilationMapper compilationMapper;
     private final EventRepository eventRepository;
-    private final EntityManager entityManager;
 
     @Override
     @Transactional
@@ -41,7 +41,7 @@ public class CompilationServiceImpl implements CompilationService {
         }
 
         var compilation = Compilation.builder()
-                .pinned(savedCompilationDto.getPinned() != null && savedCompilationDto.getPinned())
+                .pinned(savedCompilationDto.getPinned() == null ? false : savedCompilationDto.getPinned())
                 .title(savedCompilationDto.getTitle())
                 .events(new HashSet<>(events))
                 .build();
@@ -87,26 +87,12 @@ public class CompilationServiceImpl implements CompilationService {
     public List<CompilationDto> getCompilations(Boolean pinned,
                                                 Integer from,
                                                 Integer size) {
-        Predicate isPinned;
-        var criteriaBuilder = entityManager.getCriteriaBuilder();
-        var query = criteriaBuilder.createQuery(Compilation.class);
-        var compilationRoot = query.from(Compilation.class);
-        var criteria = criteriaBuilder.conjunction();
+        Pageable page = PageRequest.of(from, size, Sort.by(Sort.Direction.ASC, "id"));
 
-        if (pinned != null) {
-            if (pinned)
-                isPinned = criteriaBuilder.isTrue(compilationRoot.get("pinned"));
-            else
-                isPinned = criteriaBuilder.isFalse(compilationRoot.get("pinned"));
-
-            criteria = criteriaBuilder.and(criteria, isPinned);
+        if (pinned == null) {
+            return compilationMapper.mapToCompilationDtos(compilationRepository.findAll(page).getContent());
+        } else {
+            return compilationMapper.mapToCompilationDtos(compilationRepository.findAllByPinned(pinned, page));
         }
-        query.select(compilationRoot).where(criteria);
-        var compilations = entityManager.createQuery(query)
-                .setFirstResult(from)
-                .setMaxResults(size)
-                .getResultList();
-
-        return compilationMapper.mapToCompilationDtos(compilations);
     }
 }

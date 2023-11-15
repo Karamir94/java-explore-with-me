@@ -1,18 +1,28 @@
 package ru.practicum.ewm.event.service;
 
+import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.dsl.Expressions;
+import io.micrometer.core.instrument.util.StringUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.practicum.ewm.category.dto.CategoryDto;
+import ru.practicum.ewm.category.mapper.CategoryMapper;
 import ru.practicum.ewm.category.repository.CategoryRepository;
-import ru.practicum.ewm.error.exception.BadParamException;
 import ru.practicum.ewm.error.exception.NotExistException;
 import ru.practicum.ewm.error.exception.WrongTimeException;
 import ru.practicum.ewm.event.dto.*;
 import ru.practicum.ewm.event.entity.Event;
+import ru.practicum.ewm.event.entity.EventDtoViewsComparator;
 import ru.practicum.ewm.event.entity.Location;
+import ru.practicum.ewm.event.entity.QEvent;
+import ru.practicum.ewm.event.enums.EventSort;
 import ru.practicum.ewm.event.enums.EventState;
-import ru.practicum.ewm.event.enums.SortValue;
 import ru.practicum.ewm.event.exception.EventCanceledException;
 import ru.practicum.ewm.event.exception.EventPublishedException;
 import ru.practicum.ewm.event.mapper.EventMapper;
@@ -21,14 +31,14 @@ import ru.practicum.ewm.event.repository.EventRepository;
 import ru.practicum.ewm.request.entity.RequestEvent;
 import ru.practicum.ewm.request.enums.RequestStatus;
 import ru.practicum.ewm.request.repository.RequestRepository;
+import ru.practicum.ewm.user.dto.ShortUserDto;
+import ru.practicum.ewm.user.mapper.UserMapper;
 import ru.practicum.ewm.user.repository.UserRepository;
 import ru.practicum.ewm.utils.Patterns;
 import ru.practicum.stats.client.StatsClient;
 import ru.practicum.stats.dto.HitDto;
 import ru.practicum.stats.dto.ViewStatsDto;
 
-import javax.persistence.EntityManager;
-import javax.persistence.criteria.Predicate;
 import javax.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -53,9 +63,10 @@ public class EventServiceImpl implements EventService {
     private final EventRepository eventRepository;
     private final UserRepository userRepository;
     private final RequestRepository requestRepository;
-    private final EntityManager entityManager;
     private final EventMapper eventMapper;
     private final LocationMapper locationMapper;
+    private final CategoryMapper categoryMapper;
+    private final UserMapper userMapper;
     private final StatsClient statsClient;
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern(Patterns.DATE_PATTERN);
 
@@ -228,120 +239,132 @@ public class EventServiceImpl implements EventService {
 
     @Override
     public List<LongEventDto> getEventsWithParamsByAdmin(List<Long> users,
-                                                         EventState states,
+                                                         List<EventState> states,
                                                          List<Long> categories,
                                                          String rangeStart,
                                                          String rangeEnd,
                                                          Integer from,
                                                          Integer size) {
-        var builder = entityManager.getCriteriaBuilder();
-        var query = builder.createQuery(Event.class);
-        var root = query.from(Event.class);
-        var criteria = builder.conjunction();
 
         var start = rangeStart == null ? null : parse(rangeStart, formatter);
         var end = rangeEnd == null ? null : parse(rangeEnd, formatter);
+        if (start != null && end != null && start.isAfter(end)) {
+            throw new WrongTimeException("Start must be before end");
+        }
 
-        if (rangeStart != null)
-            criteria = builder.and(criteria, builder.greaterThanOrEqualTo(root.get("eventDate").as(LocalDateTime.class), start));
+        BooleanExpression filter = buildConditionsForEventsByAdmin(users, states, categories, start, end);
+        Pageable pageable = PageRequest.of(from / size, size);
+        Page<Event> events = eventRepository.findAll(filter, pageable);
 
-        if (rangeEnd != null)
-            criteria = builder.and(criteria, builder.lessThanOrEqualTo(root.get("eventDate").as(LocalDateTime.class), end));
+        if (events.isEmpty()) {
+            return new ArrayList<>();
+        }
 
-        if (categories != null && categories.size() > 0)
-            criteria = builder.and(criteria, root.get("category").in(categories));
+        Map<Long, Long> views = getViews(events.toList());
+        Map<Long, Long> requests = getConfirmedRequests(events.toList());
+        List<LongEventDto> result = new ArrayList<>();
 
-        if (users != null && users.size() > 0)
-            criteria = builder.and(criteria, root.get("initiator").in(users));
-
-        if (states != null)
-            criteria = builder.and(criteria, root.get("state").in(states));
-
-        query.select(root).where(criteria);
-
-        List<Event> events = entityManager.createQuery(query)
-                .setFirstResult(from)
-                .setMaxResults(size)
-                .getResultList();
-
-        if (events.size() == 0) return List.of();
-
-        Map<Long, Long> views = getViews(events);
-        Map<Long, Long> confirmedRequests = getConfirmedRequests(events);
-        List<LongEventDto> eventDtos = eventMapper.toLongEventDtos(events);
-
-        eventDtos = eventDtos.stream()
-                .peek(dto -> dto.setConfirmedRequests(
-                        confirmedRequests.getOrDefault(dto.getId(), 0L)))
-                .peek(dto -> dto.setViews(views.getOrDefault(dto.getId(), 0L)))
-                .collect(Collectors.toList());
-
-        return eventDtos;
+        for (Event event : events) {
+            LongEventDto response = eventMapper.toLongEventDto(event);
+            response.setConfirmedRequests(
+                    requests.getOrDefault(event.getId(), 0L));
+            response.setViews(
+                    views.getOrDefault(event.getId(), 0L));
+            result.add(response);
+        }
+        return result;
     }
 
     @Override
-    public List<LongEventDto> getEventsWithParamsByUser(String text,
-                                                        List<Long> categories,
-                                                        Boolean paid,
-                                                        String rangeStart,
-                                                        String rangeEnd,
-                                                        Boolean available,
-                                                        SortValue sort,
-                                                        Integer from,
-                                                        Integer size,
-                                                        HttpServletRequest request) {
-        var builder = entityManager.getCriteriaBuilder();
-        var query = builder.createQuery(Event.class);
-        var root = query.from(Event.class);
-        var criteria = builder.conjunction();
+    public List<ShortEventDto> getEventsWithParamsByUser(String text,
+                                                         List<Long> categories,
+                                                         Boolean paid,
+                                                         String rangeStart,
+                                                         String rangeEnd,
+                                                         Boolean available,
+                                                         String sort,
+                                                         Integer from,
+                                                         Integer size,
+                                                         HttpServletRequest request) {
 
-        var start = rangeStart == null ? null : parse(rangeStart, formatter);
-        var end = rangeEnd == null ? null : parse(rangeEnd, formatter);
+        LocalDateTime start = rangeStart == null ? null : parse(rangeStart, formatter);
+        LocalDateTime end = rangeEnd == null ? null : parse(rangeEnd, formatter);
 
-        if (text != null) {
-            criteria = builder.and(criteria, builder.or(
-                    builder.like(
-                            builder.lower(root.get("annotation")), "%" + text.toLowerCase() + "%"),
-                    builder.like(
-                            builder.lower(root.get("description")), "%" + text.toLowerCase() + "%")));
+        if (start != null && end != null && start.isAfter(end)) {
+            throw new WrongTimeException("Start must be before end");
         }
 
-        if (categories != null && categories.size() > 0)
-            criteria = builder.and(criteria, root.get("category").in(categories));
-
-        if (paid != null) {
-            Predicate predicate;
-            if (paid) predicate = builder.isTrue(root.get("paid"));
-            else predicate = builder.isFalse(root.get("paid"));
-            criteria = builder.and(criteria, predicate);
+        BooleanExpression filter = buildConditionsForEventsPublic(text, categories, paid, start, end, available);
+        Sort doSort;
+        if (StringUtils.isNotBlank(sort) && sort.equals(EventSort.EVENT_DATE.toString())) {
+            doSort = Sort.by(EventSort.EVENT_DATE.getTitle());
+        } else {
+            doSort = Sort.by(EventSort.ID.getTitle());
+        }
+        Pageable pageable = PageRequest.of(from / size, size, doSort);
+        Page<Event> events = eventRepository.findAll(filter, pageable);
+        List<ShortEventDto> result = buildEventDtoResponseShort(events.toList());
+        if (StringUtils.isNotBlank(sort) && sort.equals(EventSort.VIEWS.toString())) {
+            Comparator<ShortEventDto> comparator = new EventDtoViewsComparator();
+            result.sort(comparator);
         }
 
-        if (rangeEnd != null) {
-            if (rangeStart != null) {
-                LocalDateTime startTime = LocalDateTime.parse(rangeStart, formatter);
-                LocalDateTime finishTime = LocalDateTime.parse(rangeEnd, formatter);
-                if (startTime.isAfter(finishTime)) {
-                    throw new BadParamException("rangeEnd before than startTime");
-                }
-            }
-            criteria = builder.and(criteria, builder.lessThanOrEqualTo(root.get("eventDate").as(LocalDateTime.class),
-                    end));
+        return result;
+    }
+
+    private BooleanExpression buildConditionsForEventsByAdmin(List<Long> users,
+                                                              List<EventState> states,
+                                                              List<Long> categories,
+                                                              LocalDateTime start,
+                                                              LocalDateTime end) {
+
+        List<BooleanExpression> conditions = new ArrayList<>();
+        if (users != null && !users.isEmpty()) {
+            BooleanExpression condition = QEvent.event.initiator.id.in(users);
+            condition.and(condition);
         }
+        if (states != null && !states.isEmpty()) {
+            BooleanExpression condition = QEvent.event.state.in(states);
+            conditions.add(condition);
+        }
+        if (categories != null && !categories.isEmpty()) {
+            BooleanExpression condition = QEvent.event.category.id.in(categories);
+            conditions.add(condition);
+        }
+        if (start != null) {
+            BooleanExpression condition = QEvent.event.eventDate.after(start);
+            conditions.add(condition);
+        }
+        if (end != null) {
+            BooleanExpression condition = QEvent.event.eventDate.before(end);
+            conditions.add(condition);
+        }
+        if (conditions.isEmpty()) {
+            return Expressions.TRUE.isTrue();
+        } else {
+            return conditions.stream()
+                    .reduce(BooleanExpression::and)
+                    .get();
+        }
+    }
 
-        if (rangeStart != null)
-            criteria = builder.and(criteria, builder.greaterThanOrEqualTo(root.get("eventDate").as(LocalDateTime.class), start));
-
-        query.select(root).where(criteria).orderBy(builder.asc(root.get("eventDate")));
-
-        var events = entityManager.createQuery(query)
-                .setFirstResult(from)
-                .setMaxResults(size)
-                .getResultList();
-
-        if (events.size() == 0) return new ArrayList<>();
-
-        sendStats(events, request);
-        return eventMapper.toLongEventDtos(events);
+    public List<ShortEventDto> buildEventDtoResponseShort(List<Event> events) {
+        List<ShortEventDto> result = new ArrayList<>();
+        Map<Long, Long> views = getViews(events);
+        Map<Long, Long> requests = getConfirmedRequests(events);
+        for (Event event : events) {
+            CategoryDto categoryDto = categoryMapper.toCategoryDto(event.getCategory());
+            ShortUserDto userDto = userMapper.toShortUserDto(event.getInitiator());
+            ShortEventDto response = eventMapper.toShortEvent(event);
+            response.setConfirmedRequests(
+                    requests.getOrDefault(event.getId(), 0L));
+            response.setViews(
+                    views.getOrDefault(event.getId(), 0L));
+            response.setCategory(categoryDto);
+            response.setInitiator(userDto);
+            result.add(response);
+        }
+        return result;
     }
 
     private Map<Long, Long> getConfirmedRequests(List<Event> events) {
@@ -379,7 +402,6 @@ public class EventServiceImpl implements EventService {
     }
 
     private Map<Long, Long> getViews(List<Event> events) {
-        events.sort(Comparator.comparing(Event::getCreatedOn));
         var startDate = events.get(0).getCreatedOn().format(formatter);
         var endDate = now().format(formatter);
         List<Long> ids = events.stream()
@@ -467,5 +489,46 @@ public class EventServiceImpl implements EventService {
 
             statsClient.addStats(requestDto);
         }
+    }
+
+    private BooleanExpression buildConditionsForEventsPublic(String text,
+                                                             List<Long> categories,
+                                                             Boolean paid,
+                                                             LocalDateTime start,
+                                                             LocalDateTime end,
+                                                             Boolean available) {
+
+        List<BooleanExpression> conditions = new ArrayList<>();
+        if (StringUtils.isNotBlank(text)) {
+            BooleanExpression condition = QEvent.event.annotation.containsIgnoreCase(text)
+                    .or(QEvent.event.description.containsIgnoreCase(text));
+            conditions.add(condition);
+        }
+        if (categories != null && !categories.isEmpty()) {
+            BooleanExpression condition = QEvent.event.category.id.in(categories);
+            conditions.add(condition);
+        }
+        if (paid != null) {
+            BooleanExpression condition = QEvent.event.paid.eq(paid);
+            conditions.add(condition);
+        }
+        if (start != null) {
+            BooleanExpression condition = QEvent.event.eventDate.after(start);
+            conditions.add(condition);
+        }
+        if (end != null) {
+            BooleanExpression condition = QEvent.event.eventDate.before(end);
+            conditions.add(condition);
+        }
+        if (available != null) {
+            BooleanExpression condition = QEvent.event.participantLimit.goe(0);
+            conditions.add(condition);
+        }
+        BooleanExpression condition = QEvent.event.state.eq(EventState.PUBLISHED);
+        conditions.add(condition);
+
+        return conditions.stream()
+                .reduce(BooleanExpression::and)
+                .get();
     }
 }

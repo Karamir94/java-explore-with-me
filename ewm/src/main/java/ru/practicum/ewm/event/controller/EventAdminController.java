@@ -25,7 +25,7 @@ public class EventAdminController {
     public List<LongEventDto> getEvents(@RequestParam(defaultValue = "10") @Positive Integer size,
                                         @RequestParam(defaultValue = "0") @PositiveOrZero Integer from,
                                         @RequestParam(required = false) List<Long> categories,
-                                        @RequestParam(required = false) EventState states,
+                                        @RequestParam(required = false) List<EventState> states,
                                         @RequestParam(required = false) String rangeStart,
                                         @RequestParam(required = false) List<Long> users,
                                         @RequestParam(required = false) String rangeEnd) {
