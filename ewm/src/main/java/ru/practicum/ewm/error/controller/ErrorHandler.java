@@ -4,7 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.web.bind.MissingRequestValueException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -34,7 +34,7 @@ public class ErrorHandler {
 
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern(Patterns.DATE_PATTERN);
 
-    @ExceptionHandler({BadParamException.class, WrongTimeException.class, MissingRequestValueException.class})
+    @ExceptionHandler({BadParamException.class, WrongTimeException.class, MethodArgumentNotValidException.class})
     @ResponseStatus(BAD_REQUEST)
     public Error handleMethodArgumentTypeMismatchException(final RuntimeException exception) {
         log.debug("Получен статус 400 BAD_REQUEST {}", exception.getMessage(), exception);
