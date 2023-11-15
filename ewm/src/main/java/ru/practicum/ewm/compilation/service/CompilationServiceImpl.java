@@ -41,7 +41,7 @@ public class CompilationServiceImpl implements CompilationService {
         }
 
         var compilation = Compilation.builder()
-                .pinned(savedCompilationDto.getPinned() == null ? false : savedCompilationDto.getPinned())
+                .pinned(savedCompilationDto.getPinned() != null && savedCompilationDto.getPinned())
                 .title(savedCompilationDto.getTitle())
                 .events(new HashSet<>(events))
                 .build();

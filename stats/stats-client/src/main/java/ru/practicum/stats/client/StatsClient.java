@@ -1,5 +1,7 @@
 package ru.practicum.stats.client;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.PropertySource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
@@ -14,11 +16,12 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import static org.springframework.http.ResponseEntity.status;
 
 @Component
+@PropertySource("classpath:application.properties")
 public class StatsClient {
 
     private final WebClient webClient;
 
-    public StatsClient(String serverUrl) {
+    public StatsClient(@Value("${stats-server.url}") String serverUrl) {
         webClient = WebClient.builder()
                 .baseUrl(serverUrl)
                 .defaultHeader(CONTENT_TYPE, APPLICATION_JSON_VALUE)

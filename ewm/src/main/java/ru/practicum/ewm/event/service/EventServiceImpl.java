@@ -5,6 +5,8 @@ import com.querydsl.core.types.dsl.Expressions;
 import io.micrometer.core.instrument.util.StringUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -67,7 +69,8 @@ public class EventServiceImpl implements EventService {
     private final LocationMapper locationMapper;
     private final CategoryMapper categoryMapper;
     private final UserMapper userMapper;
-    private final StatsClient statsClient;
+    ApplicationContext context = new AnnotationConfigApplicationContext("ru.practicum.stats.client");
+    private final StatsClient statsClient = context.getBean(StatsClient.class);
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern(Patterns.DATE_PATTERN);
 
     @Override
@@ -229,10 +232,10 @@ public class EventServiceImpl implements EventService {
         var event = eventRepository.findByIdAndPublishedOnIsNotNull(id).orElseThrow(
                 () -> new NotExistException("Event#" + id + " does not exist"));
         long view = getView(event) + 1;
-        sendStats(event, request);
         LongEventDto eventDto = eventMapper.toLongEventDto(event);
         addConfirmedRequest(eventDto);
         eventDto.setViews(view);
+        sendStats(event, request);
 
         return eventDto;
     }
@@ -309,6 +312,7 @@ public class EventServiceImpl implements EventService {
             result.sort(comparator);
         }
 
+        sendStats(events.toList(), request);
         return result;
     }
 
@@ -402,24 +406,11 @@ public class EventServiceImpl implements EventService {
     }
 
     private Map<Long, Long> getViews(List<Event> events) {
-        var startDate = events.get(0).getCreatedOn().format(formatter);
-        var endDate = now().format(formatter);
-        List<Long> ids = events.stream()
-                .map(Event::getId)
-                .collect(Collectors.toList());
-        List<String> uris = new ArrayList<>();
-
-        for (Long id : ids) {
-            uris.add("/events/" + id);
-        }
-        var stats = statsClient.getStats(startDate, endDate, uris, false);
-
         Map<Long, Long> result = new HashMap<>();
 
-        for (int i = 0; i < stats.size(); i++) {
-            result.put(ids.get(i), stats.get(i).getHits());
+        for (Event event : events) {
+            result.put(event.getId(), getView(event));
         }
-
         return result;
     }
 
