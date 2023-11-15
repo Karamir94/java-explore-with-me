@@ -10,7 +10,9 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import ru.practicum.ewm.category.exception.CategoryNotEmptyException;
 import ru.practicum.ewm.error.entity.Error;
 import ru.practicum.ewm.error.exception.AlreadyExistException;
+import ru.practicum.ewm.error.exception.BadParamException;
 import ru.practicum.ewm.error.exception.NotExistException;
+import ru.practicum.ewm.error.exception.WrongTimeException;
 import ru.practicum.ewm.event.exception.EventCanceledException;
 import ru.practicum.ewm.event.exception.EventNotPublishedException;
 import ru.practicum.ewm.event.exception.EventPublishedException;
@@ -31,19 +33,17 @@ public class ErrorHandler {
 
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern(Patterns.DATE_PATTERN);
 
-//    @ExceptionHandler({MethodArgumentTypeMismatchException.class,
-//            MethodArgumentNotValidException.class,
-//            BadParamException.class, WrongTimeException.class, MissingRequestValueException.class})
-//    @ResponseStatus(BAD_REQUEST)
-//    public Error handleMethodArgumentTypeMismatchException(final RuntimeException exception) {
-//        log.debug("Получен статус 400 BAD_REQUEST {}", exception.getMessage(), exception);
-//        return Error.builder()
-//                .status(BAD_REQUEST.getReasonPhrase().toUpperCase())
-//                .reason("Incorrectly made request")
-//                .message(exception.getMessage())
-//                .timestamp(now().format(formatter))
-//                .build();
-//    }
+    @ExceptionHandler({BadParamException.class, WrongTimeException.class})
+    @ResponseStatus(BAD_REQUEST)
+    public Error handleMethodArgumentTypeMismatchException(final RuntimeException exception) {
+        log.debug("Получен статус 400 BAD_REQUEST {}", exception.getMessage(), exception);
+        return Error.builder()
+                .status(BAD_REQUEST.getReasonPhrase().toUpperCase())
+                .reason("Incorrectly made request")
+                .message(exception.getMessage())
+                .timestamp(now().format(formatter))
+                .build();
+    }
 
     @ExceptionHandler
     @ResponseStatus(NOT_FOUND)
