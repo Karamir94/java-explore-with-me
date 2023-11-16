@@ -23,7 +23,7 @@ import ru.practicum.ewm.request.exception.RequestParticipantLimitException;
 import ru.practicum.ewm.user.exception.WrongUserException;
 import ru.practicum.ewm.utils.Patterns;
 
-import javax.validation.ConstraintViolationException;
+import org.hibernate.exception.ConstraintViolationException;
 import java.sql.SQLIntegrityConstraintViolationException;
 import java.time.format.DateTimeFormatter;
 
