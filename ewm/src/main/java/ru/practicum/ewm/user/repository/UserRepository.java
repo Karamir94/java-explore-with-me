@@ -6,4 +6,6 @@ import ru.practicum.ewm.user.entity.User;
 public interface UserRepository extends JpaRepository<User, Long> {
 
     Boolean existsByName(String name);
+
+    boolean existsById(Long id);
 }

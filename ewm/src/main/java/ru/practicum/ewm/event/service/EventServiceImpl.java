@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.ewm.category.dto.CategoryDto;
 import ru.practicum.ewm.category.mapper.CategoryMapper;
 import ru.practicum.ewm.category.repository.CategoryRepository;
+import ru.practicum.ewm.comment.service.CommentService;
 import ru.practicum.ewm.error.exception.NotExistException;
 import ru.practicum.ewm.error.exception.WrongTimeException;
 import ru.practicum.ewm.event.dto.*;
@@ -69,6 +70,7 @@ public class EventServiceImpl implements EventService {
     private final LocationMapper locationMapper;
     private final CategoryMapper categoryMapper;
     private final UserMapper userMapper;
+    private final CommentService commentService;
     ApplicationContext context = new AnnotationConfigApplicationContext("ru.practicum.stats.client");
     private final StatsClient statsClient = context.getBean(StatsClient.class);
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern(Patterns.DATE_PATTERN);
@@ -97,6 +99,7 @@ public class EventServiceImpl implements EventService {
         LongEventDto eventDto = eventMapper.toLongEventDto(eventRepository.save(event));
         eventDto.setConfirmedRequests(0L);
         eventDto.setViews(0L);
+        eventDto.setComments(0);
 
         return eventDto;
     }
@@ -173,9 +176,10 @@ public class EventServiceImpl implements EventService {
         }
 
         LongEventDto eventDto = eventMapper.toLongEventDto(eventRepository.save(event));
+        Map<Long, Integer> comments = commentService.getCommentsCountForEvents(List.of(event));
         addConfirmedRequest(eventDto);
         eventDto.setViews(0L);
-
+        eventDto.setComments(comments.getOrDefault(event.getId(), 0));
         return eventDto;
     }
 
@@ -202,10 +206,11 @@ public class EventServiceImpl implements EventService {
                 event.setState(CANCELED);
         }
 
+        Map<Long, Integer> comments = commentService.getCommentsCountForEvents(List.of(event));
         LongEventDto eventDto = eventMapper.toLongEventDto(eventRepository.save(event));
         addConfirmedRequest(eventDto);
         eventDto.setViews(getView(event));
-
+        eventDto.setComments(comments.getOrDefault(event.getId(), 0));
         return eventDto;
     }
 
@@ -222,7 +227,6 @@ public class EventServiceImpl implements EventService {
                                        Long eventId) {
         LongEventDto eventDto = eventMapper.toLongEventDto(eventRepository.findByIdAndInitiatorId(eventId, userId).orElseThrow(
                 () -> new NotExistException("Event#" + eventId + " does not exist")));
-
         return eventDto;
     }
 
@@ -265,6 +269,7 @@ public class EventServiceImpl implements EventService {
 
         Map<Long, Long> views = getViews(events.toList());
         Map<Long, Long> requests = getConfirmedRequests(events.toList());
+        Map<Long, Integer> comments = commentService.getCommentsCountForEvents(events.toList());
         List<LongEventDto> result = new ArrayList<>();
 
         for (Event event : events) {
@@ -273,6 +278,7 @@ public class EventServiceImpl implements EventService {
                     requests.getOrDefault(event.getId(), 0L));
             response.setViews(
                     views.getOrDefault(event.getId(), 0L));
+            response.setComments(comments.getOrDefault(event.getId(), 0));
             result.add(response);
         }
         return result;
@@ -356,6 +362,7 @@ public class EventServiceImpl implements EventService {
         List<ShortEventDto> result = new ArrayList<>();
         Map<Long, Long> views = getViews(events);
         Map<Long, Long> requests = getConfirmedRequests(events);
+        Map<Long, Integer> comments = commentService.getCommentsCountForEvents(events);
         for (Event event : events) {
             CategoryDto categoryDto = categoryMapper.toCategoryDto(event.getCategory());
             ShortUserDto userDto = userMapper.toShortUserDto(event.getInitiator());
@@ -364,6 +371,7 @@ public class EventServiceImpl implements EventService {
                     requests.getOrDefault(event.getId(), 0L));
             response.setViews(
                     views.getOrDefault(event.getId(), 0L));
+            response.setComments(comments.getOrDefault(event.getId(), 0));
             response.setCategory(categoryDto);
             response.setInitiator(userDto);
             result.add(response);

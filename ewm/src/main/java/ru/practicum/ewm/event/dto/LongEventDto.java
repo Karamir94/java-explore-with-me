@@ -42,4 +42,5 @@ public class LongEventDto {
     private EventState state;
     private String title;
     private Long views;
+    private Integer comments;
 }

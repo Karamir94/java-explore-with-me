@@ -30,4 +30,5 @@ public class ShortEventDto {
     private Boolean paid;
     private String title;
     private Long views;
+    private Integer comments;
 }
